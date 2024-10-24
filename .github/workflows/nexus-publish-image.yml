@@ -67,7 +67,7 @@ jobs:
 
   build-and-push-image:
     needs: nexus-artifact-url
-    uses: beeldengeluid/selfhosted-runner-testing/.github/workflows/publish-image.yml@mvn-project-workflows
+    uses: beeldengeluid/gha-workflows/.github/workflows/publish-image.yml@mvn-project-workflows
     secrets: inherit
     with:
         artifact-url: ${{ needs.nexus-artifact-url.outputs.artifact_url }} 
