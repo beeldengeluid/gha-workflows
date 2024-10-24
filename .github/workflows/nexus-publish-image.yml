@@ -1,0 +1,74 @@
+name: Nexus Build Push Image
+
+on:
+  workflow_call: 
+    inputs:
+      runner-label:
+        required: true
+        type: string
+      group-id:
+        description: 'Nexus group ID for the project'
+        required: true
+        type: string
+      artifact:
+        description: 'Artifact used for deployment'
+        required: true
+        type: string
+      ecr-repository:
+        description: 'Optional: Specify the ECR repository name'
+        required: false
+        type: string
+      project-version:
+        description: 'Optional: Specify the project version'
+        required: false
+        type: string
+
+        
+jobs:
+  nexus-artifact-url:
+    runs-on: ${{ inputs.runner-label }}
+    outputs:
+      artifact_url: ${{ steps.get-artifact-url.outputs.artifact_url }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get Project Version
+        id: get_version
+        run: |
+          if [ -z "${{ inputs.project-version }}" ]; then
+            PROJECT_VERSION=$(mvn --non-recursive help:evaluate -Dexpression=project.version -q -DforceStdout)
+          else
+            PROJECT_VERSION="${{ inputs.project-version }}"
+          fi
+          echo "PROJECT_VERSION=$PROJECT_VERSION" >> $GITHUB_ENV
+
+      - name: Download WAR file from Nexus
+        id: get-artifact-url
+        run: |
+          NEXUS_SEARCH_URL="https://deploy1.beeldengeluid.nl/nexus/service/rest/v1/search/assets/download?\
+          sort=version&\
+          repository=$([[ ${{ env.PROJECT_VERSION }} == *"-SNAPSHOT" ]] && echo "snapshots" || echo "releases")&\
+          maven.groupId=${{ inputs.group_id }}&\
+          maven.artifactId=${{ inputs.artifact }}&\
+          maven.extension=war&\
+          maven.baseVersion=${{ env.PROJECT_VERSION }}&\
+          &maven.classifier="
+
+          artifact_url=$(curl -s -u ${{ secrets.NEXUS_USERNAME }}:${{ secrets.NEXUS_PASSWORD }} "$NEXUS_SEARCH_URL" -i | awk '/^Location:/ {print $2}' | tr -d '[:space:]')
+
+          if [ -z "$artifact_url" ]; then
+            echo "No WAR file found at the given Nexus URL"
+            exit 1
+          fi
+
+          echo "artifact_url=$artifact_url" >> $GITHUB_OUTPUT
+
+
+  build-and-push-image:
+    needs: nexus-artifact-url
+    uses: beeldengeluid/selfhosted-runner-testing/.github/workflows/publish-image.yml@mvn-project-workflows
+    secrets: inherit
+    with:
+        artifact-url: ${{ needs.nexus-artifact-url.outputs.artifact_url }} 
+        runner-label: ${{ inputs.runner-label }} 

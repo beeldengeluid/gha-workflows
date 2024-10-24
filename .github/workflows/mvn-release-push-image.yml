@@ -1,0 +1,70 @@
+name: Maven Release & Push Image
+
+on:
+  workflow_call: 
+    inputs:
+      java-version:
+        required: false
+        default: '17'
+        type: string
+      runner-label:
+        required: true
+        type: string
+jobs:
+  mvn-release:
+    runs-on: ${{inputs.runner-label}}
+    outputs:
+      artifact_url: ${{ steps.get-artifact-url.outputs.artifact_url }}
+    steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
+        
+        - name: Set up JDK 
+          uses: actions/setup-java@v4.2.0
+          with:
+            distribution: 'temurin'  # You can change this to 'zulu' or another distribution if needed
+            java-version: ${{ inputs.java-version || '17' }}
+  
+        - name: Check Java and Maven versions
+          run: |
+            java -version
+            mvn -v
+  
+        - name: Cache Maven packages
+          uses: actions/cache@v4.1.2
+          with:
+            path: ~/.m2/repository
+            key: "${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}"
+  
+        - name: Prepare Maven settings.xml
+          run: |
+            mkdir -p ~/.m2
+            sed -e "s|\${NEXUS_USERNAME}|${{ secrets.NEXUS_USERNAME }}|g" \
+                -e "s|\${NEXUS_PASSWORD}|${{ secrets.NEXUS_PASSWORD }}|g" \
+                /maven_settings.xml > ~/.m2/settings.xml
+  
+        - name: Maven Release Prepare
+          run: |
+            mvn release:prepare
+            if [ $? -ne 0 ]; then
+              echo "Maven Release Perform failed."
+              exit 1
+            fi
+
+        - name: Maven Release Perform and Upload artifacts to nexus
+          run: |
+            mvn release:perform | tee maven_output.log
+            if [ $? -ne 0 ]; then
+              echo "Maven Release Perform failed."
+              exit 1
+            fi
+            echo "::set-output name=artifact_url::$(grep -oP '(?<=Uploaded to beng-nexus: ).*museum-rest.*?\.war' maven_output.log)"
+
+
+  build-and-push-image:
+    needs: mvn-release
+    uses: beeldengeluid/gha-workflows/.github/workflows/publish-image.yml@mvn-project-workflows
+    with:
+        artifact-url: ${{ needs.maven-release.outputs.artifact_url }} 
+        runner-label: ${{ inputs.runner-label }}  
+

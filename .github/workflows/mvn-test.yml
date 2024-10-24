@@ -1,0 +1,59 @@
+name: Maven Test Build
+
+on:
+  workflow_call: 
+    inputs:
+      java-version:
+        required: false
+        default: '17'
+        type: string
+      runner-label:
+        required: true
+        type: string
+    
+jobs:
+  maven-test-build:
+    runs-on: ${{inputs.runner-label}}
+    steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
+        
+        - name: Set up JDK 
+          uses: actions/setup-java@v4.2.0
+          with:
+            distribution: 'temurin' 
+            java-version: ${{ inputs.java-version || '17' }}
+  
+        - name: Check Java and Maven versions
+          run: |
+            java -version
+            mvn -v
+  
+        - name: Cache Maven packages
+          uses: actions/cache@v4.1.1
+          with:
+            path: ~/.m2/repository
+            key: "${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}"
+  
+  
+        - name: Prepare Maven settings.xml
+          run: |
+            mkdir -p ~/.m2
+            sed -e "s|\${NEXUS_USERNAME}|${{ secrets.NEXUS_USERNAME }}|g" \
+                -e "s|\${NEXUS_PASSWORD}|${{ secrets.NEXUS_PASSWORD }}|g" \
+                /maven_settings.xml > ~/.m2/settings.xml
+  
+        - name: Clean and Compile Maven project
+          run: mvn clean compile
+  
+        - name: Run tests
+          run: mvn test
+  
+        - name: Package Maven project
+          run: mvn package
+  
+        - name: Post Maven Clean
+          run: mvn clean
+  
+  
+  
