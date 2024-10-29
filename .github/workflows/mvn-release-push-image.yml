@@ -11,7 +11,7 @@ on:
         required: true
         type: string
 jobs:
-  mvn-release:
+  maven-release:
     runs-on: ${{inputs.runner-label}}
     outputs:
       artifact_url: ${{ steps.get-release-artifact-url.outputs.artifact_url }}
@@ -65,7 +65,7 @@ jobs:
         - name: Maven Release Perform and Upload artifacts to nexus
           id: get-release-artifact-url
           run: |
-            mvn release:perform | tee maven_release_output.log
+            mvn release:perform --batch-mode | tee maven_release_output.log
             if [ $? -ne 0 ]; then
               echo "Maven Release Perform failed."
               exit 1
@@ -82,7 +82,7 @@ jobs:
             done
 
   build-and-push-image:
-    needs: mvn-release
+    needs: maven-release
     uses: beeldengeluid/gha-workflows/.github/workflows/publish-image.yml@mvn-project-workflows
     secrets: inherit
     with:
