@@ -18,8 +18,6 @@ jobs:
     steps:
         - name: Checkout code
           uses: actions/checkout@v4
-          with:
-            token: ${{ secrets.GITHUB_TOKEN }}
 
         - name: Set up Git credentials
           run: |
@@ -51,7 +49,7 @@ jobs:
                 /maven_settings.xml > ~/.m2/settings.xml
 
         - name: Use GITHUB_TOKEN for authentication
-          run: git config --global url."${{ github.repositoryUrl }}".insteadOf "scm:git:git@github.com:beeldengeluid/museum-api.git"
+          run: git config --global url."https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}".insteadOf "scm:git:git@github.com:${{ github.repository }}.git"
   
         - name: Maven Release Prepare
           run: |
