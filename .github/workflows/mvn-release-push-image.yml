@@ -14,7 +14,7 @@ jobs:
   mvn-release:
     runs-on: ${{inputs.runner-label}}
     outputs:
-      artifact_url: ${{ steps.get-artifact-url.outputs.artifact_url }}
+      artifact_url: ${{ steps.get-release-artifact-url.outputs.artifact_url }}
     steps:
         - name: Checkout code
           uses: actions/checkout@v4
@@ -63,14 +63,15 @@ jobs:
             fi
 
         - name: Maven Release Perform and Upload artifacts to nexus
-          id: get-artifact-url
+          id: get-release-artifact-url
           run: |
-            mvn release:perform --batch-mode | tee maven_output.log
+            mvn release:perform --batch-mode | tee maven_release_output.log
             if [ $? -ne 0 ]; then
               echo "Maven Release Perform failed."
               exit 1
             fi
-            echo "artifact_url=$(grep -oP '(?<=Uploaded to beng-nexus: ).*museum-rest.*?\.war' maven_output.log)" >> $GITHUB_OUTPUT
+            artifact_url=$(grep -oP '(?<=Uploaded to beng-nexus: ).*museum-rest.*?\.war' maven_release_output.log)
+            echo "artifact_url=$artifact_url" >> $GITHUB_OUTPUT
 
         - name: Post Clear of git URL Replacements
           if: always()
@@ -83,6 +84,7 @@ jobs:
   build-and-push-image:
     needs: mvn-release
     uses: beeldengeluid/gha-workflows/.github/workflows/publish-image.yml@mvn-project-workflows
+    secrets: inherit
     with:
         artifact-url: ${{ needs.maven-release.outputs.artifact_url }} 
         runner-label: ${{ inputs.runner-label }}  
