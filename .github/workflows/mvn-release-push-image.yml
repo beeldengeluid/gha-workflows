@@ -23,6 +23,10 @@ jobs:
           run: |
             git config --global user.name ${{ github.actor }}
             git config --global user.email "vvutukuri@beeldengeluid.nl"
+            echo "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
+            git config --global url."https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}".insteadOf "scm:git:git@github.com:${{ github.repository }}.git"
+            git config --global --get-regexp 'url.*.insteadOf'
+            
         
         - name: Set up JDK 
           uses: actions/setup-java@v4.2.0
@@ -48,11 +52,6 @@ jobs:
                 -e "s|\${NEXUS_PASSWORD}|${{ secrets.NEXUS_PASSWORD }}|g" \
                 /maven_settings.xml > ~/.m2/settings.xml
 
-        - name: Use GITHUB_TOKEN for authentication
-          run: |
-            echo "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
-            git config --global url."https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}".insteadOf "scm:git:git@github.com:${{ github.repository }}.git"
-            
         - name: Maven Release Prepare
           run: |
             mvn release:prepare --batch-mode
