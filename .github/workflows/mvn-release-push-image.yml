@@ -23,7 +23,7 @@ jobs:
           run: |
             git config --global user.email "github_actions@beeldengeluid.nl"
             echo "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
-            git config --global url."https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}".insteadOf "scm:git:git@github.com:${{ github.repository }}.git"
+            git config --global url."https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}".insteadOf "git@github.com:${{ github.repository }}.git"
         
         - name: Set up JDK 
           uses: actions/setup-java@v4.2.0
@@ -70,6 +70,7 @@ jobs:
           if: always()
           run: |
             for entry in $(git config --global --get-regexp 'url.*.insteadOf' | awk '{print $1}'); do
+              removing "$entry"
               git config --global --unset-all "$entry"
             done
 
