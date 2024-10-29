@@ -70,7 +70,7 @@ jobs:
           if: always()
           run: |
             for entry in $(git config --global --get-regexp 'url.*.insteadOf' | awk '{print $1}'); do
-              removing "$entry"
+              echo "removing $entry"
               git config --global --unset-all "$entry"
             done
 
