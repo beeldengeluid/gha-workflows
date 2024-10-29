@@ -49,8 +49,10 @@ jobs:
                 /maven_settings.xml > ~/.m2/settings.xml
 
         - name: Use GITHUB_TOKEN for authentication
-          run: git config --global url."https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}".insteadOf "scm:git:git@github.com:${{ github.repository }}.git"
-  
+          run: |
+            echo "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
+            git config --global url."https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}".insteadOf "scm:git:git@github.com:${{ github.repository }}.git"
+            
         - name: Maven Release Prepare
           run: |
             mvn release:prepare --batch-mode
