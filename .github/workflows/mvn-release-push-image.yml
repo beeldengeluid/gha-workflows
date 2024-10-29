@@ -65,7 +65,7 @@ jobs:
         - name: Maven Release Perform and Upload artifacts to nexus
           id: get-release-artifact-url
           run: |
-            mvn release:perform --batch-mode | tee maven_release_output.log
+            mvn release:perform | tee maven_release_output.log
             if [ $? -ne 0 ]; then
               echo "Maven Release Perform failed."
               exit 1
