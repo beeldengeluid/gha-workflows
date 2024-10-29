@@ -58,6 +58,7 @@ jobs:
             fi
 
         - name: Maven Release Perform and Upload artifacts to nexus
+          id: get-artifact-url
           run: |
             mvn release:perform --batch-mode | tee maven_output.log
             if [ $? -ne 0 ]; then
