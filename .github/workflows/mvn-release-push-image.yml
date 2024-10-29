@@ -23,10 +23,11 @@ jobs:
 
         - name: Set up Git credentials
           run: |
+            git config --global user.name ${{ github.actor }}
             git config --global user.email "github_actions@beeldengeluid.nl"
-            echo "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
             git config --global url."https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}".insteadOf "git@github.com:${{ github.repository }}.git"
-        
+            git config --global --get-regexp 'url.*.insteadOf'
+
         - name: Set up JDK 
           uses: actions/setup-java@v4.2.0
           with:
