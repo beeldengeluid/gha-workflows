@@ -18,6 +18,11 @@ jobs:
     steps:
         - name: Checkout code
           uses: actions/checkout@v4
+
+        - name: Set up Git credentials
+          run: |
+            git config --global user.name ${{ github.actor }}
+            git config --global user.email "vvutukuri@beeldengeluid.nl"
         
         - name: Set up JDK 
           uses: actions/setup-java@v4.2.0
@@ -42,6 +47,9 @@ jobs:
             sed -e "s|\${NEXUS_USERNAME}|${{ secrets.NEXUS_USERNAME }}|g" \
                 -e "s|\${NEXUS_PASSWORD}|${{ secrets.NEXUS_PASSWORD }}|g" \
                 /maven_settings.xml > ~/.m2/settings.xml
+
+        - name: Use GITHUB_TOKEN for authentication
+          run: git config --global url."https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
   
         - name: Maven Release Prepare
           run: |
