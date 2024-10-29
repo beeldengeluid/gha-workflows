@@ -21,7 +21,7 @@ jobs:
 
         - name: Set up Git credentials
           run: |
-            git config --global --remove-section url || true
+            git config --global --unset-all url.insteadOf || true
             git config --global user.email "vvutukuri@beeldengeluid.nl"
             echo "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
             git config --global url."https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}".insteadOf "scm:git:git@github.com:${{ github.repository }}.git"
@@ -72,7 +72,7 @@ jobs:
         - name: Clear git global URL Replacements
           if: always()
           run: |
-            git config --global --remove-section url || true
+            git config --global --unset-all url.insteadOf || true
         
             echo "Verifying URL replacements are cleared:"
             if git config --global --get-regexp 'url.*.insteadOf'; then
