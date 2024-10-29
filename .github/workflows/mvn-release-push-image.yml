@@ -21,12 +21,12 @@ jobs:
 
         - name: Set up Git credentials
           run: |
-            git config --global user.name ${{ github.actor }}
+            git config --global --remove-section url || true
             git config --global user.email "vvutukuri@beeldengeluid.nl"
             echo "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
             git config --global url."https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}".insteadOf "scm:git:git@github.com:${{ github.repository }}.git"
+            echo "------"
             git config --global --get-regexp 'url.*.insteadOf'
-            
         
         - name: Set up JDK 
           uses: actions/setup-java@v4.2.0
@@ -68,6 +68,18 @@ jobs:
               exit 1
             fi
             echo "::set-output name=artifact_url::$(grep -oP '(?<=Uploaded to beng-nexus: ).*museum-rest.*?\.war' maven_output.log)"
+
+        - name: Clear git global URL Replacements
+          if: always()
+          run: |
+            git config --global --remove-section url || true
+        
+            echo "Verifying URL replacements are cleared:"
+            if git config --global --get-regexp 'url.*.insteadOf'; then
+              echo "URL replacements still found."
+            else
+              echo "All URL replacements cleared."
+            fi
 
 
   build-and-push-image:
