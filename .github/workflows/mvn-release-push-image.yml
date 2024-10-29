@@ -25,6 +25,11 @@ jobs:
             git config --global user.email "github-actions@beeldengeluid.nl"
             git config --global url."https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}".insteadOf "git@github.com:${{ github.repository }}.git"
 
+        - name: Sync Local Tags with Remote Tags
+          run: |
+            git tag -l | xargs git tag -d
+            git fetch --tags
+
         - name: Set up JDK 
           uses: actions/setup-java@v4.2.0
           with:
