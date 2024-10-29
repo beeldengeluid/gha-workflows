@@ -69,17 +69,27 @@ jobs:
             fi
             echo "::set-output name=artifact_url::$(grep -oP '(?<=Uploaded to beng-nexus: ).*museum-rest.*?\.war' maven_output.log)"
 
-        - name: Clear git global URL Replacements
+        - name: Clear URL Replacements
           if: always()
           run: |
-            git config --global --unset-all url.insteadOf || true
+            # List all current url.*.insteadOf entries
+            echo "Current URL replacements:"
+            git config --global --get-regexp 'url.*.insteadOf' || echo "No URL replacements found."
         
+            # Remove all url.*.insteadOf entries
+            for entry in $(git config --global --get-regexp 'url.*.insteadOf' | awk '{print $1}'); do
+              echo "Removing $entry"
+              git config --global --unset-all "$entry"
+            done
+        
+            # Confirm removal
             echo "Verifying URL replacements are cleared:"
             if git config --global --get-regexp 'url.*.insteadOf'; then
               echo "URL replacements still found."
             else
               echo "All URL replacements cleared."
             fi
+          
 
 
   build-and-push-image:
