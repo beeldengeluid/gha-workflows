@@ -22,7 +22,7 @@ jobs:
         - name: Set up Git credentials
           run: |
             git config --global --unset-all url.insteadOf || true
-            git config --global user.email "vvutukuri@beeldengeluid.nl"
+            git config --global user.email "github_actions@beeldengeluid.nl"
             echo "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
             git config --global url."https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}".insteadOf "scm:git:git@github.com:${{ github.repository }}.git"
             echo "------"
