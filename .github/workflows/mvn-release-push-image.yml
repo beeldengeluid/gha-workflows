@@ -21,12 +21,9 @@ jobs:
 
         - name: Set up Git credentials
           run: |
-            git config --global --unset-all url.insteadOf || true
             git config --global user.email "github_actions@beeldengeluid.nl"
             echo "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
             git config --global url."https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}".insteadOf "scm:git:git@github.com:${{ github.repository }}.git"
-            echo "------"
-            git config --global --get-regexp 'url.*.insteadOf'
         
         - name: Set up JDK 
           uses: actions/setup-java@v4.2.0
@@ -69,28 +66,12 @@ jobs:
             fi
             echo "::set-output name=artifact_url::$(grep -oP '(?<=Uploaded to beng-nexus: ).*museum-rest.*?\.war' maven_output.log)"
 
-        - name: Clear URL Replacements
+        - name: Post Clear of git URL Replacements
           if: always()
           run: |
-            # List all current url.*.insteadOf entries
-            echo "Current URL replacements:"
-            git config --global --get-regexp 'url.*.insteadOf' || echo "No URL replacements found."
-        
-            # Remove all url.*.insteadOf entries
             for entry in $(git config --global --get-regexp 'url.*.insteadOf' | awk '{print $1}'); do
-              echo "Removing $entry"
               git config --global --unset-all "$entry"
             done
-        
-            # Confirm removal
-            echo "Verifying URL replacements are cleared:"
-            if git config --global --get-regexp 'url.*.insteadOf'; then
-              echo "URL replacements still found."
-            else
-              echo "All URL replacements cleared."
-            fi
-          
-
 
   build-and-push-image:
     needs: mvn-release
