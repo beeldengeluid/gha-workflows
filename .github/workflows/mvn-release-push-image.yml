@@ -55,7 +55,7 @@ jobs:
   
         - name: Maven Release Prepare
           run: |
-            mvn release:prepare
+            mvn release:prepare --batch-mode
             if [ $? -ne 0 ]; then
               echo "Maven Release Perform failed."
               exit 1
@@ -63,7 +63,7 @@ jobs:
 
         - name: Maven Release Perform and Upload artifacts to nexus
           run: |
-            mvn release:perform | tee maven_output.log
+            mvn release:perform --batch-mode | tee maven_output.log
             if [ $? -ne 0 ]; then
               echo "Maven Release Perform failed."
               exit 1
