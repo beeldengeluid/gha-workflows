@@ -64,7 +64,7 @@ jobs:
               echo "Maven Release Perform failed."
               exit 1
             fi
-            echo "::set-output name=artifact_url::$(grep -oP '(?<=Uploaded to beng-nexus: ).*museum-rest.*?\.war' maven_output.log)"
+            echo "artifact_url=$(grep -oP '(?<=Uploaded to beng-nexus: ).*museum-rest.*?\.war' maven_output.log)" >> $GITHUB_OUTPUT
 
         - name: Post Clear of git URL Replacements
           if: always()
