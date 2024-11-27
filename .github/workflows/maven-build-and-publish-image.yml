@@ -1,0 +1,147 @@
+#maven-build-and-publish-image.yml
+name: Maven Build & Publish image
+
+on:
+  workflow_call:
+    inputs:
+      java-version:
+        required: false
+        default: '17'
+        type: string
+      maven-args:
+        description: 'Maven arguments (e.g., test, deploy, release)'
+        required: true
+        type: string
+      runner-label:
+        required: false
+        default: 'ubuntu-24.04'
+        type: string
+      maven-repo:
+        required: false
+        default: 'code-artifact'
+        type: string
+      version-to-deploy:
+        required: false
+        type: string
+
+jobs:
+  maven-run:
+    runs-on: ${{ inputs.runner-label }}
+    outputs:
+      artifact_url: ${{ steps.deploy-output.outputs.artifact_url || steps.version-deploy-output.outputs.artifact_url || steps.release-output.outputs.artifact_url }}
+    steps:
+      - name: Checkout code with tag to maven deploy to specific version
+        if: ${{  inputs.version-to-deploy != '' }}
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: "refs/tags/${{ github.event.repository.name }}-${{ inputs.version-to-deploy }}"
+
+      - name: Checkout code with branch (fallback)
+        if: ${{ inputs.version-to-deploy == '' }}
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4.2.0
+        with:
+          distribution: 'temurin'
+          java-version: ${{ inputs.java-version }}
+
+      - name: Check Java and Maven details
+        run: java -version && mvn -v
+
+      - name: AWS Credentials
+        if: ${{ inputs.maven-repo == 'code-artifact' }}
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
+        with:
+          aws-region: eu-west-1
+          role-to-assume: arn:aws:iam::917951871879:role/GitHubActionsBgOrg
+
+      - name: Get CodeArtifact Authorization Token
+        if: ${{ inputs.maven-repo == 'code-artifact' }}
+        run: |
+          CODEARTIFACT_AUTH_TOKEN=$(aws codeartifact  get-authorization-token --domain nisv-ateam --domain-owner 917951871879 --region eu-west-1 --query authorizationToken --output text)
+          echo "::add-mask::$CODEARTIFACT_AUTH_TOKEN"
+          echo "CODEARTIFACT_AUTH_TOKEN=$CODEARTIFACT_AUTH_TOKEN" >> "$GITHUB_ENV"
+
+      - name: Cache Maven packages
+        uses: actions/cache@v4.1.1
+        with:
+          path: ~/.m2/repository
+          key: "${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}"
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Set Maven settings.xml
+        run: |
+          if [[ "${{ inputs.maven-repo }}" == 'code-artifact' ]]; then
+            echo "${{ secrets.MAVEN_CODE_ARTIFACT_SETTINGS }}" | base64 --decode > ~/.m2/settings.xml
+          elif [[ "${{ inputs.maven-repo }}" == 'beng-nexus' ]]; then
+            echo "${{ secrets.MAVEN_BENG_NEXUS_SETTINGS }}" | base64 --decode > ~/.m2/settings.xml
+          else
+            echo "Invalid Maven repository: ${{ inputs.maven-repo }}" && exit 1
+          fi
+
+      - name: Set up Git credentials
+        if: ${{ inputs.maven-args == 'release' }}
+        run: |
+          git config --global user.name ${{ github.actor }}
+          git config --global user.email "github-actions@beeldengeluid.nl"
+          git config --global url."https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}".insteadOf "git@github.com:${{ github.repository }}.git"
+          git config --global url."https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
+          git fetch --tags --prune
+
+      - name: Maven test
+        if: ${{ inputs.maven-args == 'test' }}
+        run: |
+          mvn clean install || { echo "Maven Tests are failed."; exit 1; }
+
+      - name: Maven Deploy with Version
+        id: version-deploy-output
+        if: ${{ inputs.version-to-deploy != '' }}
+        run: |
+          set -o pipefail
+          mvn clean deploy -U -DaltDeploymentRepository=nisv-ateam-releases::default::https://nisv-ateam-917951871879.d.codeartifact.eu-west-1.amazonaws.com/maven/releases/
+          echo "artifact_url=$(grep -oP '(?<=Uploaded to nisv-ateam-releases: ).*?\.war' maven_output.log)" >> $GITHUB_OUTPUT
+
+      - name: Maven Deploy
+        id: deploy-output
+        if: ${{ inputs.version-to-deploy == '' }}
+        run: |
+          set -o pipefail
+          mvn clean deploy | tee maven_output.log 
+          echo "artifact_url=$(grep -oP '(?<=Uploaded to nisv-ateam-snapshots: ).*?\.war' maven_output.log)" >> $GITHUB_OUTPUT
+
+      - name: Maven Release Prepare
+        if: ${{ inputs.maven-args == 'release' }}
+        run: |
+          mvn release:prepare --batch-mode || { echo "Maven Release Prepare failed."; exit 1; }
+
+      - name: Maven Release Perform
+        id: release-output
+        if: ${{ inputs.maven-args == 'release' }}
+        run: |
+          set -o pipefail
+          trap 'echo "Error occurred. Rolling back..."; mvn release:rollback --batch-mode -Pcode-artifact' ERR
+          mvn release:perform --batch-mode | tee maven_output.log
+          echo "artifact_url=$(grep -oP '(?<=Uploaded to nisv-ateam-releases: ).*?\.war' maven_output.log)" >> $GITHUB_OUTPUT
+
+      - name: Post Clear of git URL Replacements
+        if: always()
+        run: |
+          for entry in $(git config --global --get-regexp 'url.*.insteadOf' | awk '{print $1}'); do
+            echo "removing $entry"
+            git config --global --unset-all "$entry"
+          done
+
+  publish-image:
+    needs: maven-run
+    if: ${{ needs.maven-run.outputs.artifact_url != '' }}
+    uses: beeldengeluid/gha-workflows/.github/workflows/publish-image.yml@maven-workflows
+    secrets: inherit
+    with:
+      artifact-url: ${{ needs.maven-run.outputs.artifact_url }}
+      runner-label: ${{ inputs.runner-label }}
+      maven-repo: ${{ inputs.maven-repo }}
+
+
+
