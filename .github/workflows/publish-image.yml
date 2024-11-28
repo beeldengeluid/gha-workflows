@@ -9,7 +9,7 @@ on:
         description: 'The URL of the Artifact WAR file to be downloaded'
         required: true
         type: string
-      aws-auth-token:
+      codeartifact_auth_token:
         required: false
         type: string
       runner-label:
@@ -42,7 +42,7 @@ jobs:
       - name: Download Artifact WAR
         run: |
           if [[ "${{ inputs.maven-repository-profile }}" == 'code-artifact' ]]; then
-            AUTH_CREDENTIALS="aws:${{ inputs.aws-auth-token }}"
+            AUTH_CREDENTIALS="aws:${{ inputs.codeartifact_auth_token }}"
           elif [[ "${{ inputs.maven-repository-profile }}" == 'beng-nexus' ]]; then
             AUTH_CREDENTIALS="${{ secrets.NEXUS_USERNAME }}:${{ secrets.NEXUS_PASSWORD }}"
           else
