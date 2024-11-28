@@ -9,13 +9,10 @@ on:
         default: '17'
         type: string
       maven-args:
+        description: 'Maven arguments (e.g., test, deploy, release)'
         required: true
         default: test
-        type: choice
-        options:
-        - test
-        - deploy
-        - release
+        type: string
       runner-type:
         required: false
         default: 'ubuntu-24.04'
@@ -23,10 +20,7 @@ on:
       maven-repository-profile:
         required: true
         default: code-artifact
-        type: choice
-        options:
-        - code-artifact
-        - beng-nexus
+        type: string
 
 jobs:
   maven-build:
