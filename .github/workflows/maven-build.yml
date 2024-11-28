@@ -9,7 +9,6 @@ on:
         default: '17'
         type: string
       maven-args:
-        description: 'Maven arguments'
         required: true
         default: test
         type: choice
@@ -22,16 +21,12 @@ on:
         default: 'ubuntu-24.04'
         type: string
       maven-repository-profile:
-        description: 'Maven repository profile ID'
         required: true
         default: code-artifact
         type: choice
         options:
-          - code-artifact
-          - beng-nexus
-      version-to-deploy:
-        required: false
-        type: string
+        - code-artifact
+        - beng-nexus
 
 jobs:
   maven-build:
@@ -42,8 +37,6 @@ jobs:
     steps:
       - name: Checkout code for maven deploy
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          ref: ${{ (inputs.version-to-deploy != '') && format('refs/tags/{0}-{1}', github.event.repository.name, inputs.version-to-deploy) || github.ref }}
 
       - name: Set up JDK
         uses: actions/setup-java@v4.2.0
@@ -104,19 +97,16 @@ jobs:
 
       - name: Maven Deploy with Version
         id: version-deploy-output
-        if: ${{ inputs.version-to-deploy != '' }}
+        if: ${{ inputs.maven-args == 'deploy' }}
         run: |
-          set -o pipefail
-          mvn clean deploy -U -DaltDeploymentRepository=nisv-ateam-releases::default::https://nisv-ateam-917951871879.d.codeartifact.eu-west-1.amazonaws.com/maven/releases/
-          echo "ARTIFACT_URL=$(grep -oP '(?<=Uploaded to nisv-ateam-releases: ).*?\.war' maven_output.log)" >> $GITHUB_OUTPUT
-
-      - name: Maven Deploy
-        id: deploy-output
-        if: ${{ inputs.version-to-deploy == '' }}
-        run: |
-          set -o pipefail
-          mvn clean deploy | tee maven_output.log 
-          echo "ARTIFACT_URL=$(grep -oP '(?<=Uploaded to nisv-ateam-snapshots: ).*?\.war' maven_output.log)" >> $GITHUB_OUTPUT
+          if [[ ${{ github.ref }} == refs/tags/* ]]; then
+            set -o pipefail
+            mvn clean deploy -U -DaltDeploymentRepository=nisv-ateam-releases::default::https://nisv-ateam-917951871879.d.codeartifact.eu-west-1.amazonaws.com/maven/releases/ | tee maven_output.log 
+            echo "ARTIFACT_URL=$(grep -oP '(?<=Uploaded to nisv-ateam-releases: ).*?\.war' maven_output.log)" >> $GITHUB_OUTPUT
+          else
+            set -o pipefail
+            mvn clean deploy | tee maven_output.log 
+            echo "ARTIFACT_URL=$(grep -oP '(?<=Uploaded to nisv-ateam-snapshots: ).*?\.war' maven_output.log)" >> $GITHUB_OUTPUT
 
       - name: Maven Release Prepare
         if: ${{ inputs.maven-args == 'release' }}
