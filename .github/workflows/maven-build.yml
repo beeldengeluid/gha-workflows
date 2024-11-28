@@ -13,7 +13,7 @@ on:
         required: true
         default: test
         type: string
-      runner-type:
+      runner-label:
         required: false
         default: 'ubuntu-24.04'
         type: string
@@ -26,8 +26,8 @@ jobs:
   maven-build:
     runs-on: ${{ inputs.runner-label }}
     outputs:
-      ARTIFACT_URL: ${{ steps.deploy-output.outputs.ARTIFACT_URL || steps.version-deploy-output.outputs.ARTIFACT_URL || steps.release-output.outputs.ARTIFACT_URL }}
-      CODEARTIFACT_AUTH_TOKEN: ${{ teps.get-auth-token.outputs.CODEARTIFACT_AUTH_TOKEN }}
+      artifact_url: ${{ steps.deploy-output.outputs.artifact_url || steps.version-deploy-output.outputs.artifact_url || steps.release-output.outputs.artifact_url }}
+      codeartifact_auth_token: ${{ steps.get-auth-token.outputs.codeartifact_auth_token }}
     steps:
       - name: Checkout code for maven deploy
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -52,10 +52,9 @@ jobs:
         id: get-auth-token
         if: ${{ inputs.maven-repository-profile == 'code-artifact' }}
         run: |
-          CODEARTIFACT_AUTH_TOKEN=$(aws codeartifact  get-authorization-token --domain nisv-ateam --domain-owner 917951871879 --region eu-west-1 --query authorizationToken --output text)
-          echo "::add-mask::$CODEARTIFACT_AUTH_TOKEN"
-          echo "CODEARTIFACT_AUTH_TOKEN=$CODEARTIFACT_AUTH_TOKEN" >> "$GITHUB_ENV"
-          echo "CODEARTIFACT_AUTH_TOKEN=$CODEARTIFACT_AUTH_TOKEN" >> "$GITHUB_OUTPUT"
+          codeartifact_auth_token=$(aws codeartifact  get-authorization-token --domain nisv-ateam --domain-owner 917951871879 --region eu-west-1 --query authorizationToken --output text)
+          echo "::add-mask::$codeartifact_auth_token"
+          echo "codeartifact_auth_token=$codeartifact_auth_token" >> "$GITHUB_OUTPUT"
 
       - name: Cache Maven packages
         uses: actions/cache@v4.1.1
@@ -69,6 +68,7 @@ jobs:
         run: |
           if [[ "${{ inputs.maven-repository-profile }}" == 'code-artifact' ]]; then
             echo "${{ secrets.MAVEN_CODE_ARTIFACT_SETTINGS }}" | base64 --decode > ~/.m2/settings.xml
+            sed -i 's|\${env.CODEARTIFACT_AUTH_TOKEN}|${{ steps.get-auth-token.outputs.codeartifact_auth_token }}|g' ~/.m2/settings.xml
           elif [[ "${{ inputs.maven-repository-profile }}" == 'beng-nexus' ]]; then
             echo "${{ secrets.MAVEN_BENG_NEXUS_SETTINGS }}" | base64 --decode > ~/.m2/settings.xml
           else
@@ -93,14 +93,14 @@ jobs:
         id: version-deploy-output
         if: ${{ inputs.maven-args == 'deploy' }}
         run: |
+          set -o pipefail
           if [[ ${{ github.ref }} == refs/tags/* ]]; then
-            set -o pipefail
             mvn clean deploy -U -DaltDeploymentRepository=nisv-ateam-releases::default::https://nisv-ateam-917951871879.d.codeartifact.eu-west-1.amazonaws.com/maven/releases/ | tee maven_output.log 
-            echo "ARTIFACT_URL=$(grep -oP '(?<=Uploaded to nisv-ateam-releases: ).*?\.war' maven_output.log)" >> $GITHUB_OUTPUT
+            echo "artifact_url=$(grep -oP '(?<=Uploaded to nisv-ateam-releases: ).*?\.war' maven_output.log)" >> $GITHUB_OUTPUT
           else
-            set -o pipefail
             mvn clean deploy | tee maven_output.log 
-            echo "ARTIFACT_URL=$(grep -oP '(?<=Uploaded to nisv-ateam-snapshots: ).*?\.war' maven_output.log)" >> $GITHUB_OUTPUT
+            echo "artifact_url=$(grep -oP '(?<=Uploaded to nisv-ateam-snapshots: ).*?\.war' maven_output.log)" >> $GITHUB_OUTPUT
+          fi
 
       - name: Maven Release Prepare
         if: ${{ inputs.maven-args == 'release' }}
@@ -114,7 +114,7 @@ jobs:
           set -o pipefail
           trap 'echo "Error occurred. Rolling back..."; mvn release:rollback --batch-mode -Pcode-artifact' ERR
           mvn release:perform --batch-mode | tee maven_output.log
-          echo "ARTIFACT_URL=$(grep -oP '(?<=Uploaded to nisv-ateam-releases: ).*?\.war' maven_output.log)" >> $GITHUB_OUTPUT
+          echo "artifact_url=$(grep -oP '(?<=Uploaded to nisv-ateam-releases: ).*?\.war' maven_output.log)" >> $GITHUB_OUTPUT
 
       - name: Post Clear of git URL Replacements
         if: always()

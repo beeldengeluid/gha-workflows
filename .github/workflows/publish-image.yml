@@ -20,10 +20,7 @@ on:
         description: 'Maven repository profile ID'
         required: true
         default: code-artifact
-        type: choice
-        options:
-          - code-artifact
-          - beng-nexus
+        type: string
 
 jobs:
   publish-image:
