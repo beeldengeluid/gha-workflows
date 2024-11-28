@@ -1,4 +1,4 @@
-#maven-build-and-publish-image.yml
+#maven-build.yml
 name: Maven Build & Publish image
 
 on:
@@ -25,7 +25,7 @@ on:
         type: string
 
 jobs:
-  maven-run:
+  maven-build:
     runs-on: ${{ inputs.runner-label }}
     outputs:
       artifact_url: ${{ steps.deploy-output.outputs.artifact_url || steps.version-deploy-output.outputs.artifact_url || steps.release-output.outputs.artifact_url }}
@@ -133,15 +133,6 @@ jobs:
             git config --global --unset-all "$entry"
           done
 
-  publish-image:
-    needs: maven-run
-    if: ${{ needs.maven-run.outputs.artifact_url != '' }}
-    uses: beeldengeluid/gha-workflows/.github/workflows/publish-image.yml@maven-workflows
-    secrets: inherit
-    with:
-      artifact-url: ${{ needs.maven-run.outputs.artifact_url }}
-      runner-label: ${{ inputs.runner-label }}
-      maven-repo: ${{ inputs.maven-repo }}
 
 
 
