@@ -9,14 +9,21 @@ on:
         description: 'The URL of the Artifact WAR file to be downloaded'
         required: true
         type: string
+      aws-auth-token:
+        required: false
+        type: string
       runner-label:
         required: false
         default: 'ubuntu-24.04'
         type: string
-      maven-repo:
-        required: false
-        default: 'code-artifact'
-        type: string
+      maven-repository-profile:
+        description: 'Maven repository profile ID'
+        required: true
+        default: code-artifact
+        type: choice
+        options:
+          - code-artifact
+          - beng-nexus
 
 jobs:
   publish-image:
@@ -31,26 +38,21 @@ jobs:
           aws-region: eu-west-1
           role-to-assume: arn:aws:iam::917951871879:role/GitHubActionsBgOrg
 
-      - name: Get CodeArtifact Authorization Token
-        if: ${{ inputs.maven-repo == 'code-artifact' }}
-        run: |
-          CODEARTIFACT_AUTH_TOKEN=$(aws codeartifact  get-authorization-token --domain nisv-ateam --domain-owner 917951871879 --region eu-west-1 --query authorizationToken --output text)
-          echo "::add-mask::$CODEARTIFACT_AUTH_TOKEN"
-          echo "CODEARTIFACT_AUTH_TOKEN=$CODEARTIFACT_AUTH_TOKEN" >> "$GITHUB_ENV"
-
       - name: Get Metadata as env variables
         run: |
           echo "IMAGE_TAG=$(basename ${{ inputs.artifact-url }} | sed 's/\.[^.]*$//')-$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_ENV
 
       - name: Download Artifact WAR
         run: |
-          if [[ "${{ inputs.maven-repo }}" == 'code-artifact' ]]; then
-            curl -H "Authorization: Bearer ${{ env.CODEARTIFACT_AUTH_TOKEN }}" -f -L "${{ inputs.artifact-url }}" -o "ROOT.war" || { echo "Failed to download artifact."; exit 1; }
-          elif [[ "${{ inputs.maven-repo }}" == 'beng-nexus' ]]; then
-            curl -u "${{ secrets.NEXUS_USERNAME }}:${{ secrets.NEXUS_PASSWORD }}" -f "${{ inputs.artifact-url }}" -o "ROOT.war" || { echo "Failed to download artifact."; exit 1; }
+          if [[ "${{ inputs.maven-repository-profile }}" == 'code-artifact' ]]; then
+            AUTH_CREDENTIALS="aws:${{ inputs.aws-auth-token }}"
+          elif [[ "${{ inputs.maven-repository-profile }}" == 'beng-nexus' ]]; then
+            AUTH_CREDENTIALS="${{ secrets.NEXUS_USERNAME }}:${{ secrets.NEXUS_PASSWORD }}"
           else
-            echo "Invalid Maven repository: ${{ inputs.maven-repo }}" && exit 1
+            echo "Invalid Maven repository: ${{ inputs.maven-repository-profile }}" && exit 1
           fi
+          
+          curl -u "${AUTH_CREDENTIALS}" -f -L "${{ inputs.artifact-url }}" -o "ROOT.war" || { echo "Failed to download artifact."; exit 1; }
 
       - name: ECR Login
         uses: aws-actions/amazon-ecr-login@062b18b96a7aff071d4dc91bc00c4c1a7945b076 #v2.0.1
