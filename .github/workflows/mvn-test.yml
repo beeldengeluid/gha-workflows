@@ -1,0 +1,57 @@
+# .github/workflows/maven-test.yml
+
+name: Maven Test Build
+
+on:
+  workflow_call:
+    inputs:
+      java-version:
+        required: false
+        default: '17'
+        type: string
+
+jobs:
+  maven-test-build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, windows-latest ]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4.2.2
+
+      - name: AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4.0.2
+        with:
+          aws-region: eu-west-1
+          role-to-assume: arn:aws:iam::917951871879:role/GitHubActionsBgOrg
+
+      - name: Get CodeArtifact Authorization Token
+        run: |
+          codeartifact_auth_token=$(aws codeartifact  get-authorization-token --domain nisv-ateam --domain-owner 917951871879 --region eu-west-1 --query authorizationToken --output text)
+          echo "::add-mask::$codeartifact_auth_token"
+          echo "codeartifact_auth_token=$codeartifact_auth_token" >> "$GITHUB_ENV"
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4.5.0
+        with:
+          distribution: 'temurin'
+          java-version: ${{ inputs.java-version }}
+          server-id: 'code-artifact'
+          server-username: 'aws'
+          server-password: ${{ env.codeartifact_auth_token }}
+
+      - name: Cache Maven packages
+        uses: actions/cache@v4.1.2
+        with:
+          path: ~/.m2/repository
+          key: "${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}"
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Maven test
+        run: |
+          mvn clean install || { echo "Maven Tests are failed."; exit 1; }
+            
