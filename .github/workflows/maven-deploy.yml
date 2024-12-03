@@ -1,6 +1,6 @@
 # .github/workflows/maven-deploy.yml
 
-name: Maven Test Build
+name: Maven Deploy
 
 on:
   workflow_call:
@@ -11,24 +11,8 @@ on:
         type: string
 
 jobs:
-  find_folders_with_dockerfile:
-    runs-on: ubuntu-latest
-    outputs:
-      folders: ${{ steps.get_folders.outputs.folders }}
-    steps:
-      - name: Find all folders with Dockerfile
-        id: get_folders
-        run: |
-          folders=$(find . -type f -name 'Dockerfile' -exec dirname {} \; | jq -R -s -c 'split("\n")[:-1]')
-          echo "folders=${folders}" > $GITHUB_OUTPUT
-
   maven-deploy:
-    needs: find_folders_with_dockerfile
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        folder: ${{ fromJson(needs.find_folders_with_dockerfile.outputs.folders) }}
 
     steps:
       - name: Checkout code
@@ -44,24 +28,31 @@ jobs:
         run: |
           codeartifact_auth_token=$(aws codeartifact  get-authorization-token --domain nisv-ateam --domain-owner 917951871879 --region eu-west-1 --query authorizationToken --output text)
           echo "::add-mask::$codeartifact_auth_token"
-          echo "codeartifact_auth_token=$codeartifact_auth_token" >> "$GITHUB_ENV"
+          echo "CODEARTIFACT_AUTH_TOKEN=$codeartifact_auth_token" >> "$GITHUB_ENV"
+          echo "CODEARTIFACT_USERNAME=aws" >> "$GITHUB_ENV"
 
       - name: Set up JDK
         uses: actions/setup-java@v4.5.0
         with:
           distribution: 'temurin'
-          java-version: ${{ matrix.java-version }}
+          java-version: ${{ inputs.java-version }}
           server-id: 'code-artifact'
-          server-username: 'aws'
-          server-password: ${{ env.codeartifact_auth_token }}
+          server-username: 'CODEARTIFACT_USERNAME'
+          server-password: 'CODEARTIFACT_AUTH_TOKEN'
 
       - name: Cache Maven packages
         uses: actions/cache@v4.1.2
         with:
           path: ~/.m2/repository
-          key: "${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}"
+          key: "${{ runner.os }}-mvn-${{ hashFiles('**/pom.xml') }}"
           restore-keys: |
-            ${{ runner.os }}-maven-
+            ${{ runner.os }}-mvn-
+
+      - name: Find all folders with Dockerfile
+        run: |
+          folders=$(find . -type f -name 'Dockerfile' -exec dirname {} \;)
+          [ -z "$folders" ] && echo "No Dockerfiles found. Docker build will skip." && exit 0
+          echo FOLDERS=$folders >> $GITHUB_ENV
 
       - name: Maven Deploy
         run: |
@@ -72,22 +63,19 @@ jobs:
             mvn clean deploy -Pcode-artifact
           fi
 
-      - name: Setup Docker Buildx
-        if: ${{ matrix.folder != '' }}
-        uses: docker/setup-buildx-action@v3.7.1
-
       - name: ECR Login
-        if: ${{ matrix.folder != '' }}
+        if: ${{ env.FOLDERS }}
         uses: aws-actions/amazon-ecr-login@v2.0.1
 
-      - name: Get Image tag
-        run: |
-          echo "IMAGE_TAG=$(find "${{ matrix.folder }}/target" -type f -name "*.war")-$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_ENV
-
       - name: Build and push Docker images
-        uses: docker/build-push-action@v6.10.0
-        with:
-          context: ${{ matrix.folder }}
-          push: true
-          tags: '917951871879.dkr.ecr.eu-west-1.amazonaws.com'/${{ github.event.repository.name }}:${{ env.IMAGE_TAG }}
-
+        if: ${{ env.FOLDERS }}
+        run: |
+          for dir in ${{ env.FOLDERS }}; do
+            echo "Building Docker image in directory: $dir"
+            IMAGE_TAG=$(basename $(find $dir/target -type f -name '*.war') .war )-$(echo ${{ github.sha }} | cut -c1-7)
+            ECR_IMAGE_REPOSITORY=917951871879.dkr.ecr.eu-west-1.amazonaws.com/${{ github.event.repository.name }}
+          
+            docker build -t $ECR_IMAGE_REPOSITORY:$IMAGE_TAG $dir
+            docker push $ECR_IMAGE_REPOSITORY:$IMAGE_TAG
+          done
+          

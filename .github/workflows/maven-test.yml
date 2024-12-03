@@ -1,6 +1,6 @@
 # .github/workflows/maven-test.yml
 
-name: Maven Test Build
+name: Maven Test
 
 on:
   workflow_call:
@@ -11,12 +11,8 @@ on:
         type: string
 
 jobs:
-  maven-test-build:
-    runs-on: ${{ matrix.os }}
-
-    strategy:
-      matrix:
-        os: [ ubuntu-latest, windows-latest ]
+  maven-test:
+    runs-on:  ubuntu-latest
 
     steps:
       - name: Checkout code
@@ -32,7 +28,8 @@ jobs:
         run: |
           codeartifact_auth_token=$(aws codeartifact  get-authorization-token --domain nisv-ateam --domain-owner 917951871879 --region eu-west-1 --query authorizationToken --output text)
           echo "::add-mask::$codeartifact_auth_token"
-          echo "codeartifact_auth_token=$codeartifact_auth_token" >> "$GITHUB_ENV"
+          echo "CODEARTIFACT_AUTH_TOKEN=$codeartifact_auth_token" >> "$GITHUB_ENV"
+          echo "CODEARTIFACT_USERNAME=aws" >> "$GITHUB_ENV"
 
       - name: Set up JDK
         uses: actions/setup-java@v4.5.0
@@ -40,8 +37,8 @@ jobs:
           distribution: 'temurin'
           java-version: ${{ inputs.java-version }}
           server-id: 'code-artifact'
-          server-username: 'aws'
-          server-password: ${{ env.codeartifact_auth_token }}
+          server-username: 'CODEARTIFACT_USERNAME'
+          server-password: 'CODEARTIFACT_AUTH_TOKEN'
 
       - name: Cache Maven packages
         uses: actions/cache@v4.1.2
