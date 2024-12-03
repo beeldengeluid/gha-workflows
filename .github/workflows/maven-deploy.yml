@@ -48,12 +48,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-mvn-
 
-      - name: Find all folders with Dockerfile
-        run: |
-          folders=$(find . -type f -name 'Dockerfile' -exec dirname {} \;)
-          [ -z "$folders" ] && echo "No Dockerfiles found. Docker build will skip." && exit 0
-          echo FOLDERS=$folders >> $GITHUB_ENV
-
       - name: Maven Deploy
         run: |
           set -o pipefail
@@ -62,6 +56,12 @@ jobs:
           else
             mvn clean deploy -Pcode-artifact
           fi
+
+      - name: Find all folders with Dockerfile
+        run: |
+          folders=$(find . -type f -name 'Dockerfile' -exec dirname {} \;)
+          [ -z "$folders" ] && echo "No Dockerfiles found. Docker build will skip." && exit 0
+          echo FOLDERS=$folders >> $GITHUB_ENV
 
       - name: ECR Login
         if: ${{ env.FOLDERS }}
