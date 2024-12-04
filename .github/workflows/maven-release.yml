@@ -82,4 +82,12 @@ jobs:
             docker push $ECR_IMAGE_REPOSITORY:$IMAGE_TAG
           done
 
+      - name: Post Clear of git URL Replacements
+        if: always()
+        run: |
+          for entry in $(git config --global --get-regexp 'url.*.insteadOf' | awk '{print $1}'); do
+            echo "removing $entry"
+            git config --global --unset-all "$entry"
+          done
+
 
