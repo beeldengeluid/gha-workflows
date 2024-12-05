@@ -36,6 +36,5 @@ jobs:
 
       - name: Maven test
         run: |
-          pwd
           mvn clean install || { echo "Maven Tests are failed."; exit 1; }
             
