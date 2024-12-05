@@ -36,9 +36,9 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: ${{ inputs.java-version }}
-          server-id: 'code-artifact'
-          server-username: 'CODEARTIFACT_USERNAME'
-          server-password: 'CODEARTIFACT_AUTH_TOKEN'
+
+      - name: Set Maven settings.xml
+        run: echo "${{ secrets.MAVEN_CODE_ARTIFACT_SETTINGS }}" | base64 --decode > ~/.m2/settings.xml
 
       - name: Cache Maven packages
         uses: actions/cache@v4.1.2

@@ -36,9 +36,9 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: ${{ inputs.java-version }}
-          server-id: 'code-artifact'
-          server-username: 'CODEARTIFACT_USERNAME'
-          server-password: 'CODEARTIFACT_AUTH_TOKEN'
+
+      - name: Set Maven settings.xml
+        run: echo "${{ secrets.MAVEN_CODE_ARTIFACT_SETTINGS }}" | base64 --decode > ~/.m2/settings.xml
 
       - name: Cache Maven packages
         uses: actions/cache@v4.1.2
@@ -56,8 +56,6 @@ jobs:
           git config --global url."https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
           git fetch --tags --prune
 
-      
-
       - name: Maven Release Prepare
         run: |
           set -o pipefail
@@ -68,7 +66,7 @@ jobs:
         run: |
           set -o pipefail
           trap 'echo "Error occurred. Rolling back..."; mvn release:rollback --batch-mode -Pcode-artifact' ERR
-          mvn release:perform --batch-mode -Pcode-artifact 
+          mvn release:perform --batch-mode 
 
       - name: Find all folders with Dockerfile
         run: |
