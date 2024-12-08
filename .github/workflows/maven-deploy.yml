@@ -48,13 +48,7 @@ jobs:
             ${{ runner.os }}-mvn1-
 
       - name: Maven Deploy
-        run: |
-          set -o pipefail
-          if [[ ${{ github.ref }} == refs/tags/* ]]; then
-            mvn clean deploy -U -DaltDeploymentRepository=>nisv-ateam-releases::default::https://nisv-ateam-917951871879.d.codeartifact.eu-west-1.amazonaws.com/maven/releases/ 
-          else
-            mvn clean deploy 
-          fi
+        run: mvn clean deploy || { echo "Maven Tests are failed."; exit 1; }
 
       - name: Find all folders with Dockerfile
         run: |
