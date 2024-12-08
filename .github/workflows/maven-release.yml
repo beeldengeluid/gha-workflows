@@ -51,14 +51,14 @@ jobs:
       - name: Maven Release Prepare
         run: |
           set -o pipefail
-          mvn release:prepare --batch-mode -P beng-nexus || { echo "Maven Release Prepare failed."; exit 1; }
+          mvn release:prepare --batch-mode || { echo "Maven Release Prepare failed."; exit 1; }
 
       - name: Maven Release Perform
         id: release-output
         run: |
           set -o pipefail
-          trap 'echo "Error occurred. Rolling back..."; mvn release:rollback --batch-mode -Pcode-artifact' ERR
-          mvn release:perform --batch-mode -P beng-nexus 
+          trap 'echo "Error occurred. Rolling back..."; mvn release:rollback --batch-mode  ERR
+          mvn release:perform --batch-mode 
 
       - name: Find all folders with Dockerfile
         run: |

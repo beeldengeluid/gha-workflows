@@ -43,7 +43,7 @@ jobs:
       - name: Maven Deploy
         run: |
           set -o pipefail
-          mvn clean deploy -Pbeng-nexus
+          mvn clean deploy 
 
       - name: Find all folders with Dockerfile
         run: |
