@@ -29,7 +29,6 @@ jobs:
           codeartifact_auth_token=$(aws codeartifact  get-authorization-token --domain nisv-ateam --domain-owner 917951871879 --region eu-west-1 --query authorizationToken --output text)
           echo "::add-mask::$codeartifact_auth_token"
           echo "CODEARTIFACT_AUTH_TOKEN=$codeartifact_auth_token" >> "$GITHUB_ENV"
-          echo "CODEARTIFACT_USERNAME=aws" >> "$GITHUB_ENV"
 
       - name: Set up JDK
         uses: actions/setup-java@v4.5.0
@@ -44,15 +43,15 @@ jobs:
         uses: actions/cache@v4.1.2
         with:
           path: ~/.m2/repository
-          key: "${{ runner.os }}-mvn-${{ hashFiles('**/pom.xml') }}"
+          key: "${{ runner.os }}-mvn1-${{ hashFiles('**/pom.xml') }}"
           restore-keys: |
-            ${{ runner.os }}-mvn-
+            ${{ runner.os }}-mvn1-
 
       - name: Maven Deploy
         run: |
           set -o pipefail
           if [[ ${{ github.ref }} == refs/tags/* ]]; then
-            mvn clean deploy -U -DaltDeploymentRepository=code-artifact::default::https://nisv-ateam-917951871879.d.codeartifact.eu-west-1.amazonaws.com/maven/releases/ 
+            mvn clean deploy -U -DaltDeploymentRepository=>nisv-ateam-releases::default::https://nisv-ateam-917951871879.d.codeartifact.eu-west-1.amazonaws.com/maven/releases/ 
           else
             mvn clean deploy 
           fi
