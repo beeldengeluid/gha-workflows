@@ -12,8 +12,9 @@ on:
 
 jobs:
   maven-release:
+    # Only run if the commit message does not contain '[maven-release-plugin]',  commit is made by mvn.
+    if: "!contains(github.event.head_commit.message, '[maven-release-plugin]')"
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4.2.2
