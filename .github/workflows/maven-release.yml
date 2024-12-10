@@ -9,12 +9,19 @@ on:
         required: false
         default: '17'
         type: string
+      time-zone:
+        required: false
+        default: "Europe/Amsterdam"
+        type: string
+
 
 jobs:
   maven-release:
     # Only run if the commit message does not contain '[maven-release-plugin]',  commit is made by mvn.
     if: "!contains(github.event.head_commit.message, '[maven-release-plugin]')"
     runs-on: ubuntu-latest
+    env:
+      TZ: ${{ inputs.time-zone }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4.2.2

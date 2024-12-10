@@ -9,10 +9,16 @@ on:
         required: false
         default: '17'
         type: string
+      time-zone:
+        required: false
+        default: "Europe/Amsterdam"
+        type: string
 
 jobs:
   maven-deploy:
     runs-on: ubuntu-latest
+    env:
+      TZ: ${{ inputs.time-zone }}
 
     steps:
       - name: Checkout code
