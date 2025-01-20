@@ -4,12 +4,6 @@ name: Maven Test
 
 on:
   workflow_call:
-    inputs:
-      java-version:
-        required: false
-        default: '17'
-        type: string
-
 
 jobs:
   maven-test:
@@ -17,24 +11,19 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@928458dc63c29045d18a90cead4b79dcd0a6e98b #v4.2.2
 
       - name: Set up JDK
-        uses: actions/setup-java@v4.5.0
+        uses: actions/setup-java@7a6d8a8234af8eb26422e24e3006232cccaa061b #v4
         with:
           distribution: 'temurin'
-          java-version: ${{ inputs.java-version }}
+          java-version-file: '.java-version'
           overwrite-settings: 'false'
-
-      - name: Cache Maven packages
-        uses: actions/cache@v4.1.2
-        with:
-          path: ~/.m2/repository
-          key: "${{ runner.os }}-mvn-${{ hashFiles('**/pom.xml') }}"
-          restore-keys: |
-            ${{ runner.os }}-mvn-
+          cache: 'maven'
+          cache-dependency-path: 'pom.xml'
 
       - name: Maven test
         run: |
-          mvn clean install || { echo "Maven Tests are failed."; exit 1; }
+          set -o pipefail
+          mvn -B -U -fae clean install | tee result.log | tail -n 25
             

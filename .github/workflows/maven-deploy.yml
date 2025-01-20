@@ -4,11 +4,6 @@ name: Maven Deploy
 
 on:
   workflow_call:
-    inputs:
-      java-version:
-        required: false
-        default: '17'
-        type: string
 
 jobs:
 
@@ -17,33 +12,27 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@928458dc63c29045d18a90cead4b79dcd0a6e98b #v4.2.2
 
       - name: AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4.0.2
+        uses:  aws-actions/configure-aws-credentials@f171d5c895855a39c1ef93ab625499424407e172 #v4.0.2
         with:
           aws-region: eu-west-1
           role-to-assume: arn:aws:iam::917951871879:role/GitHubActionsBgOrg
 
       - name: Set up JDK
-        uses: actions/setup-java@v4.5.0
+        uses: actions/setup-java@7a6d8a8234af8eb26422e24e3006232cccaa061b #v4
         with:
           distribution: 'temurin'
-          java-version: ${{ inputs.java-version }}
+          java-version-file: '.java-version'
           overwrite-settings: 'false'
-
-      - name: Cache Maven packages
-        uses: actions/cache@v4.1.2
-        with:
-          path: ~/.m2/repository
-          key: "${{ runner.os }}-mvn-${{ hashFiles('**/pom.xml') }}"
-          restore-keys: |
-            ${{ runner.os }}-mvn-
+          cache: 'maven'
+          cache-dependency-path: 'pom.xml'
 
       - name: Maven Deploy
         run: |
           set -o pipefail
-          mvn clean deploy 
+          mvn clean deploy -fae
 
       - name: Find all folders with Dockerfile
         run: |
@@ -53,7 +42,7 @@ jobs:
 
       - name: ECR Login
         if: ${{ env.FOLDERS }}
-        uses: aws-actions/amazon-ecr-login@v2.0.1
+        uses: aws-actions/amazon-ecr-login@062b18b96a7aff071d4dc91bc00c4c1a7945b076 #v2.0.1
 
       - name: Build and push Docker images
         if: ${{ env.FOLDERS }}
