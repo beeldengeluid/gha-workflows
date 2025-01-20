@@ -32,7 +32,7 @@ jobs:
       - name: Maven Deploy
         run: |
           set -o pipefail
-          mvn clean deploy -fae
+          mvn clean deploy --batch-mode -fae
 
       - name: Find all folders with Dockerfile
         run: |
