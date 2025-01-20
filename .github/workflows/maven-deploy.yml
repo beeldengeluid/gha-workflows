@@ -35,6 +35,7 @@ jobs:
         uses: actions/setup-java@7a6d8a8234af8eb26422e24e3006232cccaa061b #v4
         with:
           distribution: 'temurin'
+          java-version-file: true
           cache: 'maven'
           cache-dependency-path: 'pom.xml'
 
