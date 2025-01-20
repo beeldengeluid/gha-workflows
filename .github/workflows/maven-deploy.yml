@@ -4,6 +4,7 @@ name: Maven Deploy
 
 on:
   workflow_call:
+    inputs:
       time-zone:
         required: false
         default: "Europe/Amsterdam"
