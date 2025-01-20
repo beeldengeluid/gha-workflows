@@ -56,13 +56,11 @@ jobs:
 
       - name: Maven Release Prepare
         run: |
-          set -o pipefail
-          mvn release:prepare --batch-mode -fae|| { echo "Maven Release Prepare failed."; exit 1; }
+          mvn release:prepare --batch-mode -fae || { echo "Maven Release Prepare failed."; exit 1; }
 
       - name: Maven Release Perform
         id: release-output
         run: |
-          set -o pipefail
           trap 'echo "Error occurred. Rolling back..."; mvn release:rollback --batch-mode -Pcode-artifact' ERR
           mvn release:perform --batch-mode -fae
 
