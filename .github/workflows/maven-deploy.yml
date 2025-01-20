@@ -44,7 +44,9 @@ jobs:
         run: echo "${{ secrets.MAVEN_CODE_ARTIFACT_SETTINGS }}" | base64 --decode > ~/.m2/settings.xml
 
       - name: Maven Deploy
-        run: mvn clean deploy -q || { echo "Maven Tests are failed."; exit 1; }
+        run: |
+          set -o pipefail
+          mvn clean deploy --batch-mode -fae
 
       - name: Find all folders with Dockerfile
         run: |

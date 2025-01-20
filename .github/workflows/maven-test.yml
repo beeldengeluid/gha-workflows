@@ -49,5 +49,6 @@ jobs:
 
       - name: Maven test
         run: |
-          mvn clean install  -q || { echo "Maven Tests are failed."; exit 1; }
+          set -o pipefail
+          mvn -B -U -fae clean install | tee result.log | tail -n 25
             
