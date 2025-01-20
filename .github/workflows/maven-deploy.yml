@@ -31,8 +31,7 @@ jobs:
 
       - name: Maven Deploy
         run: |
-          set -o pipefail
-          mvn clean deploy --batch-mode -fae
+          mvn clean deploy --batch-mode -fae || { echo "Maven Deploy failed."; exit 1; }
 
       - name: Find all folders with Dockerfile
         run: |
