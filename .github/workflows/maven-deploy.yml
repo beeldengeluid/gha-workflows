@@ -1,5 +1,3 @@
-# .github/workflows/maven-deploy.yml
-
 name: Maven Deploy
 
 on:

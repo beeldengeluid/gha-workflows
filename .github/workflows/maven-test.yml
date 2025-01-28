@@ -1,5 +1,3 @@
-# .github/workflows/maven-test.yml
-
 name: Maven Test
 
 on:
