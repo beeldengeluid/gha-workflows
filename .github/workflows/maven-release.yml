@@ -15,7 +15,7 @@ jobs:
   maven-release:
     # Only run if the commit message does not contain '[maven-release-plugin]',  commit is made by mvn.
     if: "!contains(github.event.head_commit.message, '[maven-release-plugin]')"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       TZ: ${{ inputs.time-zone }}
       MAVEN_OPTS: -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
