@@ -18,6 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TZ: ${{ inputs.time-zone }}
+      MAVEN_OPTS: -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
     steps:
       - name: Checkout code
         uses: actions/checkout@928458dc63c29045d18a90cead4b79dcd0a6e98b #v4.2.2

@@ -15,6 +15,7 @@ jobs:
     runs-on:  ubuntu-latest
     env:
       TZ: ${{ inputs.time-zone }}
+      MAVEN_OPTS: -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
     permissions:
       contents: read
       id-token: write
