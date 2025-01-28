@@ -10,6 +10,9 @@ jobs:
     # Only run if the commit message does not contain '[maven-release-plugin]',  commit is made by mvn.
     if: "!contains(github.event.head_commit.message, '[maven-release-plugin]')"
     runs-on: self-hosted
+    env:
+      MAVEN_OPTS: -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+
     steps:
       - name: Checkout code
         uses: actions/checkout@928458dc63c29045d18a90cead4b79dcd0a6e98b #v4.2.2
