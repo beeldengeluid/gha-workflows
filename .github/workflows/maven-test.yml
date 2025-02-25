@@ -7,10 +7,16 @@ on:
         required: false
         default: "Europe/Amsterdam"
         type: string
+      timeout-minutes:
+        required: false
+        default: 10
+        type: number
+
 
 jobs:
   maven-test:
     runs-on:  ubuntu-24.04
+    timeout-minutes: ${{ inputs.timeout-minutes }}
     env:
       TZ: ${{ inputs.time-zone }}
       MAVEN_OPTS: -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
