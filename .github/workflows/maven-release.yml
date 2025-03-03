@@ -17,6 +17,7 @@ jobs:
     env:
       TZ: ${{ inputs.time-zone }}
       MAVEN_OPTS: -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+      GH_TOKEN: ${{ secrets.ACCESS_TOKEN }}
     steps:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -44,24 +45,38 @@ jobs:
       - name: Set Maven settings.xml
         run: echo "${{ vars.MAVEN_CODE_ARTIFACT_SETTINGS }}" | base64 --decode > ~/.m2/settings.xml
 
-
       - name: Set up Git credentials
         run: |
-          git config --global user.name ${{ github.actor }}
+          git config --global user.name "${{ github.actor }}"
           git config --global user.email "github-actions@beeldengeluid.nl"
           git config --global url."https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}".insteadOf "git@github.com:${{ github.repository }}.git"
           git config --global url."https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
           git fetch --tags --prune
 
+      - name: Create and Push Release Branch
+        run: |
+          BRANCH_NAME=RELEASE-$(echo ${{ github.sha }} | cut -c1-7)
+          echo BRANCH_NAME=$BRANCH_NAME >> $GITHUB_ENV
+          git checkout -b $BRANCH_NAME || git checkout $BRANCH_NAME
+          git push origin $BRANCH_NAME -f
+
       - name: Maven Release Prepare
         run: |
-          mvn release:prepare --batch-mode -fae || { echo "Maven Release Prepare failed."; exit 1; }
+          mvn -B -U release:prepare -fae || { echo "Maven Release Prepare failed."; exit 1; }
 
       - name: Maven Release Perform
         id: release-output
         run: |
-          trap 'echo "Error occurred. Rolling back..."; mvn release:rollback --batch-mode -Pcode-artifact' ERR
-          mvn release:perform --batch-mode -fae
+          trap 'echo "Error occurred. Rolling back..."; mvn -B release:rollback' ERR
+          mvn -B -U release:perform -fae
+
+      - name: Create Pull Request for Release
+        run: |
+          PROJECT_VERSION=$(git describe --tags --abbrev=0 | sed 's/^[^0-9]*//')
+          gh pr create --base main --head ${{env.BRANCH_NAME}} --title "Release of version $PROJECT_VERSION" --body "This PR merges the Maven release changes."
+
+      - name: Auto-Merge Pull Request
+        run: gh pr merge ${{env.BRANCH_NAME}} --delete-branch --merge --admin
 
       - name: Find all folders with Dockerfile
         run: |
@@ -84,5 +99,3 @@ jobs:
             docker build -t $ECR_IMAGE_REPOSITORY:$IMAGE_TAG $dir
             docker push $ECR_IMAGE_REPOSITORY:$IMAGE_TAG
           done
-
-
