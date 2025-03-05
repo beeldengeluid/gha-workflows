@@ -54,8 +54,7 @@ jobs:
         run: |
           git config --global user.name ${{ github.actor }}
           git config --global user.email "github-actions@beeldengeluid.nl"
-          git config --global url."https://x-access-token:${{ secrets.ACCESS_TOKEN }}@github.com/${{ github.repository }}".insteadOf "git@github.com:${{ github.repository }}.git"
-          git config --global url."https://x-access-token:${{ secrets.ACCESS_TOKEN }}@github.com/".insteadOf "https://github.com/"
+          git config --global url."https://github.com//${{ github.repository }}".insteadOf "git@github.com:${{ github.repository }}.git"
           git fetch --tags --prune
 
       - name: Maven Release Prepare
