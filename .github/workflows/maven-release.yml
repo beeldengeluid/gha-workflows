@@ -57,12 +57,16 @@ jobs:
           git config --global url."https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
           git fetch --tags --prune
 
-      - name: Create and Push Release Branch
+      - name: Name Release Branch
+        id: name-release-branch
         run: |
           BRANCH_NAME=RELEASE-$(echo ${{ github.sha }} | cut -c1-7)
-          echo BRANCH_NAME=$BRANCH_NAME >> $GITHUB_ENV
-          git checkout -b $BRANCH_NAME || git checkout $BRANCH_NAME
-          git push origin $BRANCH_NAME -f
+          echo "branch=$BRANCH_NAME" >> $GITHUB_OUTPUT
+
+      - name: Create and Push Release Branch
+        run: |
+          git checkout -b ${{ steps.name-release-branch.outputs.branch }} || git checkout ${{ steps.name-release-branch.outputs.branch }}
+          git push origin ${{ steps.name-release-branch.outputs.branch }} -f
 
       - name: Maven Release Prepare
         run: |
@@ -77,8 +81,8 @@ jobs:
       - name: Create and Auto-Merge Pull Request
         run: |
           PROJECT_VERSION=$(git describe --tags --abbrev=0 | sed 's/^[^0-9]*//')
-          gh pr create --base main --head ${{env.BRANCH_NAME}} --title "Release of version $PROJECT_VERSION" --body "This PR merges the Maven release changes."
-          gh pr merge ${{env.BRANCH_NAME}} --delete-branch --merge --admin
+          gh pr create --base main --head ${{ steps.name-release-branch.outputs.branch }} --title "Release of version $PROJECT_VERSION" --body "This PR merges the Maven release changes."
+          gh pr merge $${{ steps.name-release-branch.outputs.branch }} --delete-branch --merge --admin
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
 
