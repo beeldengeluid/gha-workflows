@@ -96,7 +96,9 @@ jobs:
         if: ${{ env.FOLDERS }}
         uses: aws-actions/amazon-ecr-login@062b18b96a7aff071d4dc91bc00c4c1a7945b076 # v2.0.1
 
-      - name: Build and push Docker images
+      - name: Build, push Docker images, and trigger workflows for auto deployment
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
         if: ${{ env.FOLDERS }}
         run: |
           for dir in ${{ env.FOLDERS }}; do
@@ -106,4 +108,13 @@ jobs:
 
             docker build -t $ECR_IMAGE_REPOSITORY:$IMAGE_TAG $dir
             docker push $ECR_IMAGE_REPOSITORY:$IMAGE_TAG
+            
+            echo "Update image for deployments scrips of test,acc and prod environments"
+            gh workflow run update-maven-projects-image-tag.yml \
+            -r main \
+            -R github.com/beeldengeluid/k8s-workloads \
+            -f project=${{ github.event.repository.name }} \
+            -f environments=tst,acc \
+            -f image_tag_prefix=$(basename $dir) \
+            -f image_tag=$IMAGE_TAG
           done
