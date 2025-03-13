@@ -49,7 +49,6 @@ jobs:
       - name: Set Maven settings.xml
         run: echo "${{ vars.MAVEN_CODE_ARTIFACT_SETTINGS }}" | base64 --decode > ~/.m2/settings.xml
 
-
       - name: Set up Git credentials
         run: |
           git config --global user.name ${{ github.actor }}
@@ -58,15 +57,34 @@ jobs:
           git config --global url."https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
           git fetch --tags --prune
 
+      - name: Name Release Branch
+        id: name-release-branch
+        run: |
+          BRANCH_NAME=RELEASE-$(echo ${{ github.sha }} | cut -c1-7)
+          echo "branch=$BRANCH_NAME" >> $GITHUB_OUTPUT
+
+      - name: Create and Push Release Branch
+        run: |
+          git checkout -b ${{ steps.name-release-branch.outputs.branch }} || git checkout ${{ steps.name-release-branch.outputs.branch }}
+          git push origin ${{ steps.name-release-branch.outputs.branch }} -f
+
       - name: Maven Release Prepare
         run: |
-          mvn release:prepare --batch-mode -fae || { echo "Maven Release Prepare failed."; exit 1; }
+          mvn -B -U release:prepare -fae || { echo "Maven Release Prepare failed."; exit 1; }
 
       - name: Maven Release Perform
         id: release-output
         run: |
-          trap 'echo "Error occurred. Rolling back..."; mvn release:rollback --batch-mode -Pcode-artifact' ERR
-          mvn release:perform --batch-mode -fae
+          trap 'echo "Error occurred. Rolling back..."; mvn -B release:rollback' ERR
+          mvn -B -U release:perform -fae
+
+      - name: Create and Auto-Merge Pull Request
+        run: |
+          PROJECT_VERSION=$(git describe --tags --abbrev=0 | sed 's/^[^0-9]*//')
+          gh pr create --base main --head ${{ steps.name-release-branch.outputs.branch }} --title "Release of version $PROJECT_VERSION" --body "This PR merges the Maven release changes."
+          gh pr merge ${{ steps.name-release-branch.outputs.branch }} --delete-branch --merge --admin
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
 
       - name: Find all folders with Dockerfile
         run: |
@@ -89,5 +107,3 @@ jobs:
             docker build -t $ECR_IMAGE_REPOSITORY:$IMAGE_TAG $dir
             docker push $ECR_IMAGE_REPOSITORY:$IMAGE_TAG
           done
-
-

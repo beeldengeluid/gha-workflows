@@ -49,7 +49,7 @@ jobs:
 
       - name: Maven Deploy
         run: |
-          mvn clean deploy --batch-mode -fae || { echo "Maven Deploy failed."; exit 1; }
+          mvn -B -U clean deploy -fae || { echo "Maven Deploy failed."; exit 1; }
 
       - name: Find all folders with Dockerfile
         run: |
