@@ -11,10 +11,6 @@ on:
         required: false
         default: 10
         type: number
-      java-version:
-        required: false
-        default: 21
-        type: string
 
 jobs:
   maven-deploy:
@@ -41,7 +37,7 @@ jobs:
         uses: actions/setup-java@3a4f6e1af504cf6a31855fa899c6aa5355ba6c12 # v4.7.0
         with:
           distribution: 'temurin'
-          java-version-file: ${{ inputs.java-version }}
+          java-version-file: '.java-version'
           cache: 'maven'
       - name: Set Maven settings.xml # This seems, odd, setup-java can do this
         run: echo "${{ vars.MAVEN_CODE_ARTIFACT_SETTINGS }}" | base64 --decode > ~/.m2/settings.xml
@@ -55,7 +51,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
           ECR_IMAGE_REPOSITORY=917951871879.dkr.ecr.eu-west-1.amazonaws.com/${{ github.event.repository.name }}
-          for dir in `find . -name docker -type d `; do
+          for dir in find . -name docker -type d }}; do
             cd $dir/../..
             ARTIFACTID=`mvn help:evaluate -Dexpression=project.artifactId -q -DforceStdout`
             VERSION=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout`
