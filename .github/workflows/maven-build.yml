@@ -41,23 +41,13 @@ jobs:
           cache: 'maven'
       - name: ECR Login
         uses: aws-actions/amazon-ecr-login@062b18b96a7aff071d4dc91bc00c4c1a7945b076 # v2.0.1
-      - name: Extract Docker metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=tag
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=pep440,pattern={{major}},event=tag-
       - name: Set Maven settings.xml # This seems, odd, setup-java can do this
         run: echo "${{ vars.MAVEN_CODE_ARTIFACT_SETTINGS }}" | base64 --decode > ~/.m2/settings.xml
       - name: Maven install
         run: |
-          echo Tags: ${{ steps.meta.outputs.tags }}
-          echo Lables: ${{ steps.meta.outputs.labels }}
           mvn -B -U clean install -fae
-          docker image ls
+      - name: Docker image ls
+        run: |
+           docker image ls
 
 
