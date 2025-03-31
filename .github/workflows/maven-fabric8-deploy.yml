@@ -1,23 +1,17 @@
 name: Maven Deploy
 
+
+# A build where the docker image is created by the 'fabric8' maven plugin
+#
+
 on:
   workflow_call:
-    inputs:
-      time-zone:
-        required: false
-        default: "Europe/Amsterdam"
-        type: string
-      timeout-minutes:
-        required: false
-        default: 10
-        type: number
 
 jobs:
   maven-deploy:
     runs-on: ubuntu-24.04
-    timeout-minutes: ${{ inputs.timeout-minutes }}
     env:
-      TZ: ${{ inputs.time-zone }}
+      TZ:  'Europe/Amsterdam'
       MAVEN_ARGS: '--no-transfer-progress'
     steps:
       - name: Checkout code
@@ -58,8 +52,8 @@ jobs:
              IMAGE_TAG=$VERSION
              echo $IMAGE_TAG
              docker image ls
-             docker image tag $ARTIFACTID:$IMAGE_TAG $ECR_IMAGE_REPOSITORY/$ARTIFACTID:$IMAGE_TAG
-             docker image ls
-             docker push $ECR_IMAGE_REPOSITORY/$ARTIFACTID:$IMAGE_TAG
+             #docker image tag $ARTIFACTID:$IMAGE_TAG $ECR_IMAGE_REPOSITORY/$ARTIFACTID:$IMAGE_TAG
+             #docker image ls
+             #docker push $ECR_IMAGE_REPOSITORY/$ARTIFACTID:$IMAGE_TAG
           done
                     
