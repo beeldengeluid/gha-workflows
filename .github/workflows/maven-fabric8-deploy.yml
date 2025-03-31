@@ -57,7 +57,9 @@ jobs:
              VERSION=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout`
              IMAGE_TAG=$VERSION
              echo $IMAGE_TAG
+             docker image ls
              docker image tag $ARTIFACTID:$IMAGE_TAG $ECR_IMAGE_REPOSITORY/$ARTIFACTID:$IMAGE_TAG
-             echo docker push $ECR_IMAGE_REPOSITORY/$ARTIFACTID:$IMAGE_TAG
+             docker image ls
+             docker push $ECR_IMAGE_REPOSITORY/$ARTIFACTID:$IMAGE_TAG
           done
                     
