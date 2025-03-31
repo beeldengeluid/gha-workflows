@@ -11,6 +11,10 @@ on:
         required: false
         default: 10
         type: number
+      java-version:
+        required: false
+        default: 21
+        type: string
 
 jobs:
   maven-deploy:
@@ -19,7 +23,6 @@ jobs:
     env:
       TZ: ${{ inputs.time-zone }}
       MAVEN_ARGS: '--no-transfer-progress'
-      java_version: 21
     steps:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -38,7 +41,7 @@ jobs:
         uses: actions/setup-java@3a4f6e1af504cf6a31855fa899c6aa5355ba6c12 # v4.7.0
         with:
           distribution: 'temurin'
-          java-version-file: ${java.version}
+          java-version-file: ${{ inputs.java-version }}
           cache: 'maven'
       - name: Set Maven settings.xml # This seems, odd, setup-java can do this
         run: echo "${{ vars.MAVEN_CODE_ARTIFACT_SETTINGS }}" | base64 --decode > ~/.m2/settings.xml
