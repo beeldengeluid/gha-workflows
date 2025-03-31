@@ -52,7 +52,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
           ECR_IMAGE_REPOSITORY=917951871879.dkr.ecr.eu-west-1.amazonaws.com/${{ github.event.repository.name }}
-          for dir in ${{ find . -name docker -type d }}; do
+          for dir in `find . -name docker -type d `; do
             cd $dir/../..
             ARTIFACTID=`mvn help:evaluate -Dexpression=project.artifactId -q -DforceStdout`
             VERSION=`mvn help:evaluate -Dexpression=project.version -q -DforceStdout`
