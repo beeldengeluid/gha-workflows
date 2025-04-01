@@ -55,14 +55,14 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
-          echo ${GH_TOKEN} | wc
+
           gh workflow run update-maven-projects-image-tag.yml \
            -r main \
            -R github.com/beeldengeluid/k8s-workloads \
            -f project=${{ github.event.repository.name }} \
            -f environments=tst \
-           -f image_tag_prefix='' \
-           -f image_tag=latest
+           -f image_tag_prefix='lat' \
+           -f image_tag=est
 
 
 
