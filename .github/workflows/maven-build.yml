@@ -1,7 +1,7 @@
 name: Maven Deploy
 
 
-# A build where the docker image is created by the 'fabric8' maven plugin
+# A build where the docker image(s) is (are) created by a maven plugin
 #
 
 on:
@@ -49,5 +49,15 @@ jobs:
       - name: Docker image ls
         run: |
            docker image ls
+      - name: Deploy
+        run: |
+          gh workflow run update-maven-projects-image-tag.yml \
+           -r main \
+           -R github.com/beeldengeluid/k8s-workloads \
+           -f project=${{ github.event.repository.name }} \
+           -f environments=tst \
+           -f image_tag_prefix='' \
+           -f image_tag=latest
+
 
 
