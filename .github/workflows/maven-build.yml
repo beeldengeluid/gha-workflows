@@ -51,8 +51,9 @@ jobs:
         run: |
            docker image ls
       - name: Deploy
+        # This will actually to commit stuff to k8s-workloads repo. I think it is odd, I just want to trigger a rollout
         env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
+          GH_TOKEN: ${{ secrets.GH_PAT }} # why GITHUB_TOKEN cannot suffice?
         run: |
           gh workflow run update-maven-projects-image-tag.yml \
            -r main \
