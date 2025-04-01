@@ -46,10 +46,13 @@ jobs:
       - name: Maven install
         run: |
           mvn -B -U clean install -fae
+      # docker ls only interesting if the build actually happens using docker. E.g. if the build uses jib, the doocker image will be directly pushed to ecr, and not even show up here
       - name: Docker image ls
         run: |
            docker image ls
       - name: Deploy
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
           gh workflow run update-maven-projects-image-tag.yml \
            -r main \
