@@ -81,7 +81,7 @@ jobs:
       - name: Create and Auto-Merge Pull Request
         run: |
           PROJECT_VERSION=$(git describe --tags --abbrev=0 | sed 's/^[^0-9]*//')
-          gh pr create --base main --head ${{ steps.name-release-branch.outputs.branch }} --title "Release of version $PROJECT_VERSION" --body "This PR merges the Maven release changes."
+          gh pr create --base ${{ github.event.repository.default_branch }} --head ${{ steps.name-release-branch.outputs.branch }} --title "Release of version $PROJECT_VERSION" --body "This PR merges the Maven release changes."
           gh pr merge ${{ steps.name-release-branch.outputs.branch }} --delete-branch --merge --admin
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
