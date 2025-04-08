@@ -116,7 +116,7 @@ jobs:
             -r main \
             -R github.com/beeldengeluid/k8s-workloads \
             -f project=${{ github.event.repository.name }} \
-            -f environments=tst,acc \
+            -f environments=acc \
             -f image_tag_prefix=$(basename $dir) \
             -f image_tag=$IMAGE_TAG
           done
