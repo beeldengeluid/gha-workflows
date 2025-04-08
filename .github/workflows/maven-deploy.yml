@@ -71,6 +71,9 @@ jobs:
             FILE=$(find $dir/target -type f \( -name '*.war' -o -name '*.jar' \) | head -n 1)
             BUILD_TYPE=${FILE##*.}  
             IMAGE_TAG=$(basename $FILE .$BUILD_TYPE)-$(echo ${{ github.sha }} | cut -c1-7)
+            # I'd say this is a good idea, but then remove the file name from the tag?
+            # and i would also base the tag in project.version
+
             #ECR_IMAGE_REPOSITORY=917951871879.dkr.ecr.eu-west-1.amazonaws.com/${{ github.event.repository.name }}/$(basename $dir)
             ECR_IMAGE_REPOSITORY=917951871879.dkr.ecr.eu-west-1.amazonaws.com/${{ github.event.repository.name }}
 
