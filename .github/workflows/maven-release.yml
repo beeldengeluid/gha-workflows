@@ -9,7 +9,7 @@ on:
         type: string
       timeout-minutes:
         required: false
-        default: 10
+        default: 20
         type: number
 
 
