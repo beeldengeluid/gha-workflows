@@ -15,10 +15,6 @@ jobs:
       - name: Setup Buildx
         uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
 
-      - name: Add sha to GITHUB_OUTPUT
-        id: git-sha-short
-        run: echo "sha=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
-
       - name: Get Visibility
         id: visibility
         run: |
@@ -57,8 +53,8 @@ jobs:
         with:
           images: ${{ steps.remote.outputs.registry }}/${{ steps.remote.outputs.repository }}
           tags: |
+              type=sha,prefix=git-
               type=raw,value=edge,enable={{is_default_branch}}
-              type=raw,value=git-${{ steps.git-sha-short.outputs.sha }}
 
       - name: Build image
         id: build
