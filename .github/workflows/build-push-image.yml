@@ -68,8 +68,7 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          push: false
-          load: true
+          push: true
 
       - name: Save metadata
         run: echo '${{ steps.build.outputs.metadata }}' > build-push-metadata.json
@@ -79,6 +78,3 @@ jobs:
         with:
           name: build-push-metadata.json
           path: build-push-metadata.json
-
-      - name: Push image
-        run: docker push --all-tags ${{ steps.remote.outputs.registry }}/${{ steps.remote.outputs.repository }}
