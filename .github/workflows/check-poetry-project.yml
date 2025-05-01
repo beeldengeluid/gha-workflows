@@ -2,6 +2,11 @@ name: Check Poetry Project
 
 on:
   workflow_call:
+    inputs:
+      poetry-version:
+        required: false
+        default: "1.8.5"
+        type: string
 
 jobs:
   test:
@@ -13,7 +18,7 @@ jobs:
       with:
         python-version-file: pyproject.toml
     - name: Install poetry
-      run: pipx install poetry==1.8.5
+      run: pipx install "poetry==${{ inputs.poetry-version }}"
     - name: Check poetry.lock
       run: poetry check
     - name: Install poetry env from pyproject.toml
