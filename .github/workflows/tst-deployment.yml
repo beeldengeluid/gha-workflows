@@ -3,10 +3,6 @@ name: Test(tst) env Deployment
 on:
   workflow_call:
     inputs:
-      time-zone:
-        required: false
-        default: "Europe/Amsterdam"
-        type: string
       deployment-module:
         required: false
         type: string
@@ -16,13 +12,11 @@ on:
         type: number
 
 jobs:
-  maven-deploy:
+  maven-deploy-tst-deployment:
     runs-on: ubuntu-24.04
     timeout-minutes: ${{ inputs.timeout-minutes }}
     env:
-      TZ: ${{ inputs.time-zone }}
       GH_TOKEN: ${{ secrets.GH_PAT }}
-      MAVEN_ARGS: '-B -U -V -fae -DskipTests --no-transfer-progress'
 
     steps:
       - name: Checkout code
@@ -53,7 +47,7 @@ jobs:
 
       - name: Maven Deploy
         run: |
-          mvn clean deploy || { echo "Maven Deploy failed."; exit 1; }
+          mvn clean deploy -B -U -V -fae -ntp -DskipTests || exit 1 || { echo "Maven Deploy failed."; exit 1; }
 
       - name: ECR Login
         if: ${{ inputs.deployment-module }}
@@ -69,34 +63,33 @@ jobs:
           echo "ECR_REPO=$ECR_REPO" >> $GITHUB_ENV
 
       - name: Build, push Docker images.
-
-        run: |
-          docker build -t ${{ env.ECR_REPO }}:${{ env.IMAGE_TAG }}  ${{ inputs.deployment-module }}
-          docker push ${{ env.ECR_REPO }}:${{ env.IMAGE_TAG }} 
-
-      - name: Create and Push Release Branch
-        run: |
-          git checkout -b update-tst-deployment-image || git checkout update-tst-deployment-image
-          git push origin update-tst-deployment-image -f
-
-      - name: Update image in Kubernetes deployment
         if: ${{ inputs.deployment-module }}
         run: |
-          gh auth login --with-token <<< "${{ secrets.GITHUB_TOKEN }}"
-          git checkout -b update-tst-deployment-image || git checkout update-tst-deployment-image
-          sed -i "s|newTag: .*|newTag: ${{ image_tag }}|" "/k8s/tst/kustomization.yml"
-          git add /k8s/tst/kustomization.yml
-          git commit -m "Update image tag to $IMAGE_TAG in project "/k8s/tst/kustomization.yml" -a
-          git push origin update-tst-deployment-image -f
+          docker build -t ${{ env.ECR_REPO }}:${{ env.IMAGE_TAG }}  ${{ inputs.deployment-module }}
+          docker push ${{ env.ECR_REPO }}:${{ env.IMAGE_TAG }}
 
-      - name: Create and Auto-Merge Pull Request
+      - name: Update image and auto-merge PR
+        if: ${{ inputs.deployment-module }}
         run: |
-          gh pr create --title "Update image tag to ${{ env.IMAGE_TAG }}" \
-                      --body "This PR updates the image tag in the Kubernetes deployment files." \
-                      --head ${{ github.head_ref }} \
-                      --base ${{ github.event.repository.default_branch }}
-          gh pr merge ${{ github.head_ref }} --merge --admin
-          
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+
+          branch=update-tst-deployment-image
+          deployment_path=./k8s/tst/kustomization.yml
+          git checkout -b $branch || git checkout $branch
+
+          sed -i "s|newTag: .*|newTag: ${{ env.IMAGE_TAG }}|" $deployment_path
+          git add $deployment_path
+          git commit -m "[gh-workflow] Update image to ${{ env.IMAGE_TAG }} in $deployment_path" || exit 0
+          git push origin $branch -f
+
+          gh pr create \
+            --title "Update image tag to ${{ env.IMAGE_TAG }}" \
+            --body "Updates image tag in Kubernetes deployment." \
+            --head $branch \
+            --base ${{ github.event.repository.default_branch }}
+
+          gh pr merge $branch --merge --admin
           
           
                     
