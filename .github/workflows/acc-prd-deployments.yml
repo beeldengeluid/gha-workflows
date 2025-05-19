@@ -40,7 +40,6 @@ jobs:
           distribution: 'temurin'
           java-version-file: '.java-version'
           cache: 'maven'
-          cache-dependency-path: 'pom.xml'
 
       - name: Set Maven settings.xml
         run: echo "${{ vars.MAVEN_CODE_ARTIFACT_SETTINGS }}" | base64 --decode > ~/.m2/settings.xml
