@@ -96,9 +96,17 @@ jobs:
         if: ${{ env.FOLDERS }}
         uses: aws-actions/amazon-ecr-login@062b18b96a7aff071d4dc91bc00c4c1a7945b076 # v2.0.1
 
+      - name: Generate a token
+        if: ${{ env.FOLDERS }}
+        id: generate-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.BG_APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
       - name: Build, push Docker images, and trigger workflows for auto deployment
         env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
         if: ${{ env.FOLDERS }}
         run: |
           for dir in ${{ env.FOLDERS }}; do
