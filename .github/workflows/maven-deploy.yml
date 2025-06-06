@@ -61,9 +61,21 @@ jobs:
         if: ${{ env.FOLDERS }}
         uses: aws-actions/amazon-ecr-login@062b18b96a7aff071d4dc91bc00c4c1a7945b076 # v2.0.1
 
+      - name: Extract repo name
+        run: echo "REPO_NAME=${GITHUB_REPOSITORY##*/}" >> $GITHUB_ENV
+
+      - name: Generate a token
+        if: ${{ env.FOLDERS }}
+        id: generate-token
+        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e #v2.0.6
+        with:
+          app-id: ${{ vars.BG_APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          repositories: ${{ env.REPO_NAME }}, k8s-workloads
+
       - name: Build, push Docker images, and trigger workflows for auto deployment
         env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
         if: ${{ env.FOLDERS }}
         run: |
           for dir in ${{ env.FOLDERS }}; do
