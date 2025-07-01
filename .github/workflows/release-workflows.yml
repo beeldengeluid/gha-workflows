@@ -13,7 +13,7 @@ jobs:
       - name: metadata
         id: metadata
         run: |
-          echo release_tag=v$(date '+%Y.%m.%d-4') >> $GITHUB_OUTPUT
+          echo release_tag=v$(date '+%Y.%m.%d') >> $GITHUB_OUTPUT
       - name: repo state
         id: repo-state
         run: |
