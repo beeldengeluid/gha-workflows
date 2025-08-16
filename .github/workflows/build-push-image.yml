@@ -2,6 +2,10 @@ name: Build & Push
 
 on:
   workflow_call:
+    inputs:
+      subdirectory:
+        type: string
+        required: false
 
 jobs:
   build-push:
@@ -26,7 +30,7 @@ jobs:
         id: remote
         run: |
           echo "registry=${{ steps.visibility.outputs.visibility == 'public' && 'ghcr.io' || '917951871879.dkr.ecr.eu-west-1.amazonaws.com' }}" >> $GITHUB_OUTPUT
-          echo "repository=${{ steps.visibility.outputs.visibility == 'public' && github.repository || github.event.repository.name }}" >> $GITHUB_OUTPUT
+          echo "repository=${{ steps.visibility.outputs.visibility == 'public' && github.repository || github.event.repository.name }}${{ inputs.subdirectory && format('/{0}', inputs.subdirectory) || '' }}" >> $GITHUB_OUTPUT
 
       - name: AWS Credentials
         if: ${{ steps.remote.outputs.registry == '917951871879.dkr.ecr.eu-west-1.amazonaws.com'}}
@@ -60,6 +64,7 @@ jobs:
         id: build
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
+          context: "{{defaultContext}}:${{ inputs.subdirectory }}"
           labels: ${{ steps.meta.outputs.labels }}
           tags: ${{ steps.meta.outputs.tags }}
           cache-from: type=gha
