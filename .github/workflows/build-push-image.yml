@@ -6,6 +6,10 @@ on:
       subdirectory:
         type: string
         required: false
+      runner:
+        type: string
+        required: true
+        default: ubuntu-24.04
 
 jobs:
   build-push:
