@@ -78,14 +78,12 @@ jobs:
           trap 'echo "Error occurred. Rolling back..."; mvn -B release:rollback' ERR
           mvn -B -U release:perform -fae
 
+      # We are creating a pull request and then immediately merge it. What is the gain in that?
       - name: Create and Auto-Merge Pull Request
         run: |
           PROJECT_VERSION=$(git describe --tags --abbrev=0 | sed 's/^[^0-9]*//')
           gh pr create --base ${{ github.event.repository.default_branch }} --head ${{ steps.name-release-branch.outputs.branch }} --title "Release of version $PROJECT_VERSION" --body "This PR merges the Maven release changes."
           gh pr merge ${{ steps.name-release-branch.outputs.branch }} --delete-branch --merge --admin
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
-
       - name: Find all folders with Dockerfile
         run: |
           folders=$(find ./target/checkout -type f -name 'Dockerfile' -exec dirname {} \;)
