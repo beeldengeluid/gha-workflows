@@ -46,6 +46,7 @@ jobs:
           cache: 'maven'
           cache-dependency-path: 'pom.xml'
 
+       # whey don't we leave this to the java set up action?
       - name: Set Maven settings.xml
         run: echo "${{ vars.MAVEN_CODE_ARTIFACT_SETTINGS }}" | base64 --decode > ~/.m2/settings.xml
 
