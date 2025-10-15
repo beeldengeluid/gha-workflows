@@ -70,6 +70,8 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           push: true
+          provenance: false
+          platforms: "linux/amd64"
 
       - name: Save metadata
         run: echo '${{ steps.build.outputs.metadata }}' > build-push-metadata.json
