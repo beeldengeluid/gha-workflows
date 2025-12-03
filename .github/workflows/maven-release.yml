@@ -107,6 +107,14 @@ jobs:
         if: ${{ env.FOLDERS }}
         uses: aws-actions/amazon-ecr-login@062b18b96a7aff071d4dc91bc00c4c1a7945b076 # v2.0.1
 
+      - name: Log in to GHCR
+        if: ${{ env.FOLDERS }}
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef
+        with:
+          registry: ghcr.io
+          username: ${{ secrets.GH_USER }}
+          password: ${{ secrets.GH_PAT }}
+
       - name: Build, push Docker images, and trigger workflows for auto deployment
         env:
           GH_TOKEN: ${{ steps.generate-token.outputs.token }}
