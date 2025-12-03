@@ -11,6 +11,10 @@ on:
         required: false
         default: 10
         type: number
+      environments:
+        required: false
+        default: "acc, prd"
+        type: string
 
 
 jobs:
@@ -127,7 +131,7 @@ jobs:
             -r main \
             -R github.com/beeldengeluid/k8s-workloads \
             -f project=${{ github.event.repository.name }} \
-            -f environments=acc \
+            -f environments=${{ inputs.environments }} \
             -f image_tag_prefix=$(basename $dir) \
             -f image_tag=$IMAGE_TAG
           done
