@@ -74,11 +74,13 @@ jobs:
 
       - name: Name Release Branch
         id: name-release-branch
+        if: github.ref_name == github.event.repository.default_branch
         run: |
           BRANCH_NAME=RELEASE-$(echo ${{ github.sha }} | cut -c1-7)
           echo "branch=$BRANCH_NAME" >> $GITHUB_OUTPUT
 
       - name: Create and Push Release Branch
+        if: github.ref_name == github.event.repository.default_branch
         run: |
           git checkout -b ${{ steps.name-release-branch.outputs.branch }} || git checkout ${{ steps.name-release-branch.outputs.branch }}
           git push origin ${{ steps.name-release-branch.outputs.branch }} -f
@@ -94,6 +96,7 @@ jobs:
           mvn -B -U release:perform -fae
 
       - name: Create and Auto-Merge Pull Request
+        if: github.ref_name == github.event.repository.default_branch
         run: |
           PROJECT_VERSION=$(git describe --tags --abbrev=0 | sed 's/^[^0-9]*//')
           gh pr create --base ${{ github.event.repository.default_branch }} --head ${{ steps.name-release-branch.outputs.branch }} --title "Release of version $PROJECT_VERSION" --body "This PR merges the Maven release changes."
