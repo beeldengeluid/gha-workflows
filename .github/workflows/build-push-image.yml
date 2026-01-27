@@ -72,7 +72,10 @@ jobs:
           push: true
 
       - name: Save metadata
-        run: echo '${{ steps.build.outputs.metadata }}' > build-push-metadata.json
+        run: |
+          cat << 'EOF' > build-push-metadata.json
+          ${{ steps.build.outputs.metadata }}
+          EOF
 
       - name: Upload metadata
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
