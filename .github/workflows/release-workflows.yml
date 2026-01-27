@@ -23,12 +23,8 @@ jobs:
           echo ahead_by=$ahead_by >> $GITHUB_OUTPUT
         env:
           GH_TOKEN: ${{ github.token }}
-      - name: abort empty
-        if: ${{ steps.repo-state.outputs.ahead_by == 0 }}
-        run: gh run cancel ${{ github.run_id }}
-        env:
-          GH_TOKEN: ${{ github.token }}
       - name: release
+        if: ${{ steps.repo-state.outputs.ahead_by > 0 }}
         run: |
           gh release create ${{ steps.metadata.outputs.release_tag }} \
             --fail-on-no-commits \
