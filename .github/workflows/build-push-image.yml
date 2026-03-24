@@ -77,7 +77,7 @@ jobs:
           context: "{{defaultContext}}:${{ inputs.subdirectory }}"
           platforms: ${{matrix.architecture}}
           labels: ${{ steps.meta.outputs.labels }}
-          tags: ${{ steps.remote.outputs.repository }}
+          tags: ${{ steps.remote.outputs.registry }}/${{ steps.remote.outputs.repository }}
           outputs: type=image,push-by-digest=true,name-canonical=true,push=true
           # cache-from: type=gha
           # cache-to: type=gha,mode=max
