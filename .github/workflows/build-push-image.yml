@@ -3,24 +3,26 @@ name: Build & Push
 on:
   workflow_call:
     inputs:
+      architectures:
+        default: [arm64, x86]
       subdirectory:
         type: string
         required: false
 
 jobs:
-  build-push:
-    runs-on: ubuntu-24.04
+  build:
+    strategy:
+      matrix:
+        architecture: [arm64, x86]
+
+    runs-on: ${{ matrix.architecture == 'arm64' && 'ubuntu-24.04-arm64' || 'ubuntu-24.04' }}
+
     permissions:
       contents: read
       id-token: write
       packages: write
 
     steps:
-      - name: Setup QEMU
-        uses: docker/setup-qemu-action@49b3bc8e6bdd4a60e6116a5414239cba5943d3cf # v3.2.0
-        with:
-          image: tonistiigi/binfmt:qemu-v7.0.0@sha256:66e11bea77a5ea9d6f0fe79b57cd2b189b5d15b93a2bdb925be22949232e4e55
-
       - name: Setup Buildx
         uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
 
@@ -70,21 +72,35 @@ jobs:
         uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
         with:
           context: "{{defaultContext}}:${{ inputs.subdirectory }}"
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/${{matrix.architecture}}
           labels: ${{ steps.meta.outputs.labels }}
           tags: ${{ steps.meta.outputs.tags }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          push: true
+          outputs: type=image,push-by-digest=true,name-canonical=true,push=true
+          # cache-from: type=gha
+          # cache-to: type=gha,mode=max
 
-      - name: Save metadata
+      - name: Export digest
         run: |
-          cat << 'EOF' > build-push-metadata.json
-          ${{ steps.build.outputs.metadata }}
-          EOF
+          mkdir -p ${{ runner.temp }}/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "${{ runner.temp }}/digests/${digest#sha256:}"
 
-      - name: Upload metadata
+      - name: Upload digest
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          name: build-push-metadata.json
-          path: build-push-metadata.json
+          name: digests-${{ matrix.architecture }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+      # - name: Save metadata
+      #   run: |
+      #     cat << 'EOF' > build-push-metadata.json
+      #     ${{ steps.build.outputs.metadata }}
+      #     EOF
+
+      # - name: Upload metadata
+      #   uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+      #   with:
+      #     name: build-push-metadata.json
+      #     path: build-push-metadata.json
