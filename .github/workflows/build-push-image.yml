@@ -3,8 +3,8 @@ name: Build & Push
 on:
   workflow_call:
     inputs:
-      architectures:
-        default: [arm64, x86]
+      # architectures:
+      #   default: [arm64, x86]
       subdirectory:
         type: string
         required: false
