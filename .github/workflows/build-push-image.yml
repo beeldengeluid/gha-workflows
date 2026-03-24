@@ -75,7 +75,7 @@ jobs:
         uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
         with:
           context: "{{defaultContext}}:${{ inputs.subdirectory }}"
-          platforms: ${{matrix.architecture}}
+          platforms: ${{matrix.platform}}
           labels: ${{ steps.meta.outputs.labels }}
           tags: ${{ steps.remote.outputs.registry }}/${{ steps.remote.outputs.repository }}
           outputs: type=image,push-by-digest=true,name-canonical=true,push=true
@@ -91,7 +91,7 @@ jobs:
       - name: Upload digest
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          name: digests-${{ matrix.architecture }}
+          name: digests-${{ matrix.platform }}
           path: ${{ runner.temp }}/digests/*
           if-no-files-found: error
           retention-days: 1
