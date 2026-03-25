@@ -157,11 +157,11 @@ jobs:
         working-directory: ${{ runner.temp }}/digests
         run: |
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "${{ steps.meta.json }}") \
-            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
+            $(printf '${{ steps.remote.outputs.registry }}/${{ steps.remote.outputs.repository }}@sha256:%s ' *)
 
       - name: Inspect image
         run: |
-          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }}
+          docker buildx imagetools inspect ${{ steps.remote.outputs.registry }}/${{ steps.remote.outputs.repository }}:${{ steps.meta.outputs.version }}
 
       # - name: Save metadata
       #   run: |
