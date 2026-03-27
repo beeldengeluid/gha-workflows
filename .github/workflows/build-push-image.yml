@@ -159,15 +159,9 @@ jobs:
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< '${{ steps.meta.outputs.json }}') \
             $(printf '${{ steps.remote.outputs.registry }}/${{ steps.remote.outputs.repository }}@sha256:%s ' *)
 
-      - name: Inspect image
-        run: |
-          docker buildx imagetools inspect ${{ steps.remote.outputs.registry }}/${{ steps.remote.outputs.repository }}:${{ steps.meta.outputs.version }}
-
       - name: Save metadata
         run: |
-          cat << 'EOF' > build-push-metadata.json
-          ${{ steps.build.outputs.metadata }}
-          EOF
+          docker buildx imagetools inspect ${{ steps.remote.outputs.registry }}/${{ steps.remote.outputs.repository }}:${{ steps.meta.outputs.version }} > build-push-metadata.json
 
       - name: Upload metadata
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
