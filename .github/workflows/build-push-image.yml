@@ -3,8 +3,6 @@ name: Build & Push
 on:
   workflow_call:
     inputs:
-      # architectures:
-      #   default: [arm64, x86]
       subdirectory:
         type: string
         required: false
@@ -120,11 +118,15 @@ jobs:
           retention-days: 1
 
   merge:
-    runs-on: ubuntu-24.04
-
     needs:
       - metadata
       - build
+
+    runs-on: ubuntu-24.04
+
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
       - name: Download digests
@@ -155,15 +157,6 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract image metadata
-        id: meta
-        uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf # v6.0.0
-        with:
-          images: ${{ needs.metadata.outputs.registry }}/${{ needs.metadata.outputs.repository }}
-          tags: |
-              type=sha,prefix=git-
-              type=raw,value=edge,enable={{is_default_branch}}
 
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
