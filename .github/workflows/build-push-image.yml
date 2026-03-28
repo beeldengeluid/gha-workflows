@@ -161,7 +161,7 @@ jobs:
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
         run: |
-          docker buildx imagetools create $(jq -cr '. | map("-t " + .) | join(" ")' <<< '${{ needs.metadata.outputs.tags }}') \
+          docker buildx imagetools create $(echo '${{ needs.metadata.outputs.tags }}' | sed 's/^/-t /' | tr '\n' ' ') \
             $(printf '${{ needs.metadata.outputs.registry }}/${{ needs.metadata.outputs.repository }}@sha256:%s ' *) \
             --metadata-file build-push-metadata.json
 
