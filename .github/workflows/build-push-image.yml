@@ -16,7 +16,7 @@ jobs:
     outputs:
       registry: ${{ steps.remote.outputs.registry }}
       repository: ${{ steps.remote.outputs.repository }}
-      tags: ${{ steps.remote.outputs.tags }}
+      tags: ${{ steps.meta.outputs.tags }}
 
     permissions:
       contents: read
