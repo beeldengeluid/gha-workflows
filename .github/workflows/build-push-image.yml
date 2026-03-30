@@ -175,3 +175,4 @@ jobs:
         with:
           name: build-push-metadata.json
           path: build-push-metadata.json
+          if-no-files-found: error
