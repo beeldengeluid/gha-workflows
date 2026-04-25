@@ -3,16 +3,46 @@ name: Check Poetry Project
 on:
   workflow_call:
     inputs:
+      arm64:
+        type: boolean
+        default: false
       poetry-version:
         required: false
         default: "1.8.5"
         type: string
 
 jobs:
+  define-matrix:
+    runs-on: ubuntu-slim
+
+    permissions: {}
+
+    outputs:
+      platforms: ${{ steps.platforms.outputs.platforms }}
+
+    steps:
+      - id: platforms
+        run: |
+          echo platforms='${{
+            inputs.arm64
+            && '[{"key":"linux-amd64","os":"linux","architecture":"amd64","runner":"ubuntu-24.04"},{"key":"linux-arm64","os":"linux","architecture":"arm64","runner":"ubuntu-24.04-arm"}]'
+            || '[{"key":"linux-amd64","os":"linux","architecture":"amd64","runner":"ubuntu-24.04"}]'
+          }}' >> "$GITHUB_OUTPUT"
+
+
   test:
-    runs-on: ubuntu-24.04
+    needs:
+      - define-matrix
+
+    strategy:
+      matrix:
+        platform: ${{ fromJSON(needs.define-matrix.outputs.platforms) }}
+
     permissions:
       contents: read
+
+    runs-on: ${{ matrix.platform.runner }}
+
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
     - name: Set up Python
