@@ -18,8 +18,7 @@ jobs:
     timeout-minutes: ${{ inputs.timeout-minutes }}
     env:
       TZ: ${{ inputs.time-zone }}
-      MAVEN_OPTS: -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
-
+      MAVEN_ARGS: '--no-transfer-progress --color always'
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
