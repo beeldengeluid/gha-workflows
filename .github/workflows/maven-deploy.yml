@@ -86,14 +86,14 @@ jobs:
           GH_TOKEN: ${{ steps.generate-token.outputs.token }}
         if: ${{ env.FOLDERS }}
         run: |
-          PROJECT="${{ github.event.repository.name }}"
-          PROJECT="${PROJECT,,}"
+          REPOSITORY ="${{ github.event.repository.name }}"
+          REPOSITORY ="${REPOSITORY,,}"
           for dir in ${{ env.FOLDERS }}; do
             echo "Building Docker image in directory: $dir"
             FILE=$(find $dir/target -maxdepth 1 -type f \( -name "*.war" -o -name "*.jar" \))
             BUILD_TYPE=${FILE##*.}
             IMAGE_TAG=$(basename $FILE .$BUILD_TYPE)-$(echo ${{ github.sha }} | cut -c1-7)
-            ECR_IMAGE_REPOSITORY=917951871879.dkr.ecr.eu-west-1.amazonaws.com/${PROJECT}
+            ECR_IMAGE_REPOSITORY=917951871879.dkr.ecr.eu-west-1.amazonaws.com/${REPOSITORY}
 
             docker build -t $ECR_IMAGE_REPOSITORY:$IMAGE_TAG $dir
             docker push $ECR_IMAGE_REPOSITORY:$IMAGE_TAG
@@ -102,7 +102,7 @@ jobs:
             gh workflow run update-maven-projects-image-tag.yml \
             -r main \
             -R github.com/beeldengeluid/k8s-workloads \
-            -f project=${PROJECT} \
+            -f project=${REPOSITORY} \
             -f environments=tst \
             -f image_tag_prefix=$(basename $dir) \
             -f image_tag=$IMAGE_TAG
