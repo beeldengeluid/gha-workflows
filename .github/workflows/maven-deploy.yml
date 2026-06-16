@@ -18,8 +18,7 @@ jobs:
     timeout-minutes: ${{ inputs.timeout-minutes }}
     env:
       TZ: ${{ inputs.time-zone }}
-      MAVEN_OPTS: -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
-
+      MAVEN_ARGS: '--no-transfer-progress --color always'
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -86,9 +85,9 @@ jobs:
           GH_TOKEN: ${{ steps.generate-token.outputs.token }}
         if: ${{ env.FOLDERS }}
         run: |
-          REPOSITORY ="${{ github.event.repository.name }}"
+          REPOSITORY="${{ github.event.repository.name }}"
           # convert to lowercase
-          REPOSITORY ="${REPOSITORY,,}"
+          REPOSITORY="${REPOSITORY,,}"
           for dir in ${{ env.FOLDERS }}; do
             echo "Building Docker image in directory: $dir"
             FILE=$(find $dir/target -maxdepth 1 -type f \( -name "*.war" -o -name "*.jar" \))
