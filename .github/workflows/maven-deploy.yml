@@ -18,8 +18,7 @@ jobs:
     timeout-minutes: ${{ inputs.timeout-minutes }}
     env:
       TZ: ${{ inputs.time-zone }}
-      MAVEN_OPTS: -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
-
+      MAVEN_ARGS: '--no-transfer-progress --color always'
     steps:
       - name: Checkout code
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -86,21 +85,24 @@ jobs:
           GH_TOKEN: ${{ steps.generate-token.outputs.token }}
         if: ${{ env.FOLDERS }}
         run: |
+          REPOSITORY="${{ github.event.repository.name }}"
+          # convert to lowercase
+          REPOSITORY="${REPOSITORY,,}"
           for dir in ${{ env.FOLDERS }}; do
             echo "Building Docker image in directory: $dir"
             FILE=$(find $dir/target -maxdepth 1 -type f \( -name "*.war" -o -name "*.jar" \))
-            BUILD_TYPE=${FILE##*.}  
+            BUILD_TYPE=${FILE##*.}
             IMAGE_TAG=$(basename $FILE .$BUILD_TYPE)-$(echo ${{ github.sha }} | cut -c1-7)
-            ECR_IMAGE_REPOSITORY=917951871879.dkr.ecr.eu-west-1.amazonaws.com/${{ github.event.repository.name }}
-          
+            ECR_IMAGE_REPOSITORY=917951871879.dkr.ecr.eu-west-1.amazonaws.com/${REPOSITORY}
+
             docker build -t $ECR_IMAGE_REPOSITORY:$IMAGE_TAG $dir
             docker push $ECR_IMAGE_REPOSITORY:$IMAGE_TAG
-            
+
             echo "Update image for deployment script of test environment"
             gh workflow run update-maven-projects-image-tag.yml \
             -r main \
             -R github.com/beeldengeluid/k8s-workloads \
-            -f project=${{ github.event.repository.name }} \
+            -f project=${REPOSITORY} \
             -f environments=tst \
             -f image_tag_prefix=$(basename $dir) \
             -f image_tag=$IMAGE_TAG
