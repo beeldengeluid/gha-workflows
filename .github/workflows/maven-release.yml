@@ -146,6 +146,6 @@ jobs:
             -R github.com/beeldengeluid/k8s-workloads \
             -f project=${REPOSITORY} \
             -f environments=${{ inputs.environments }} \
-            -f image_name=$ECR_IMAGE_REPOSITORY \
+            -f image_tag_prefix=$(basename $dir) \
             -f image_tag=$IMAGE_TAG
           done
