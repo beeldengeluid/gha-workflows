@@ -6,10 +6,6 @@ on:
       arm64:
         type: boolean
         default: false
-      poetry-version:
-        required: false
-        default: "1.8.5"
-        type: string
 
 jobs:
   define-matrix:
@@ -50,7 +46,7 @@ jobs:
       with:
         python-version-file: pyproject.toml
     - name: Install poetry
-      run: pipx install "poetry==${{ inputs.poetry-version }}"
+      run: pipx install "poetry"
     - name: Check poetry.lock
       run: poetry check
     - name: Install poetry env from pyproject.toml
