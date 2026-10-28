@@ -25,8 +25,8 @@ jobs:
         run: |
           echo platforms='${{
             inputs.arm64
-            && '[{"key":"linux-amd64","os":"linux","architecture":"amd64","runner":"ubuntu-24.04"},{"key":"linux-arm64","os":"linux","architecture":"arm64","runner":"ubuntu-24.04-arm"}]'
-            || '[{"key":"linux-amd64","os":"linux","architecture":"amd64","runner":"ubuntu-24.04"}]'
+            && '[{"key":"linux-amd64","os":"linux","architecture":"amd64","runner":"ubuntu-26.04"},{"key":"linux-arm64","os":"linux","architecture":"arm64","runner":"ubuntu-26.04-arm"}]'
+            || '[{"key":"linux-amd64","os":"linux","architecture":"amd64","runner":"ubuntu-26.04"}]'
           }}' >> "$GITHUB_OUTPUT"
 
 
