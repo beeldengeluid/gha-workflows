@@ -47,6 +47,7 @@ jobs:
 | `time-zone` | `Europe/Amsterdam` | both |
 | `timeout-minutes` | `10` | both |
 | `environments` | `acc, prd` | release |
+| `k8s-workloads` | `true` | both: set `false` to only push the images, without updating k8s-workloads |
 
 The workflows use the organization secrets `GH_USER`, `GH_PAT` and `APP_PRIVATE_KEY`, and the variables `BG_APP_ID` and `MAVEN_CODE_ARTIFACT_SETTINGS`.
 

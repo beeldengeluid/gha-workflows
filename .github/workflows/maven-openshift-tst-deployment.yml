@@ -16,6 +16,11 @@ on:
         required: false
         default: 10
         type: number
+      k8s-workloads:
+        description: "Update the image tag in k8s-workloads after pushing the images"
+        required: false
+        default: true
+        type: boolean
 
 jobs:
   tst-deployment:
@@ -73,6 +78,7 @@ jobs:
           password: ${{ secrets.GH_PAT }}
 
       - name: Generate a token
+        if: inputs.k8s-workloads
         id: generate-token
         uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf #v2.2.1
         with:
@@ -100,6 +106,7 @@ jobs:
           provenance: false
 
       - name: Trigger workflows for auto deployment
+        if: inputs.k8s-workloads
         env:
           GH_TOKEN: ${{ steps.generate-token.outputs.token }}
           METADATA: ${{ steps.bake.outputs.metadata }}

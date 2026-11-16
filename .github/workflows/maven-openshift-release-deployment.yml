@@ -19,6 +19,11 @@ on:
         required: false
         default: "acc, prd"
         type: string
+      k8s-workloads:
+        description: "Update the image tag in k8s-workloads after pushing the images"
+        required: false
+        default: true
+        type: boolean
 
 
 jobs:
@@ -143,6 +148,7 @@ jobs:
           provenance: false
 
       - name: Trigger workflows for auto deployment
+        if: inputs.k8s-workloads
         env:
           GH_TOKEN: ${{ steps.generate-token.outputs.token }}
           ENVIRONMENTS: ${{ inputs.environments }}
