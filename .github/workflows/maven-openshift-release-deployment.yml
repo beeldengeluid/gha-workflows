@@ -37,7 +37,7 @@ jobs:
 
       - name: Find or create docker-bake.hcl
         id: bake-file
-        uses: beeldengeluid/gha-workflows/.github/actions/docker-bake-file@becf8d9848dbccda04572d39648084da5efaa42d # docker-bake-file
+        uses: beeldengeluid/gha-workflows/.github/actions/docker-bake-file@e5dedbce3924670baa2f35d3d8f84c135bfb5043 # docker-bake-file
 
       - name: AWS Credentials
         uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
