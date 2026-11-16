@@ -31,8 +31,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Check for docker-bake.hcl
-        run: test -f docker-bake.hcl || { echo "::error::No docker-bake.hcl found in the repository root."; exit 1; }
+      - name: Find or create docker-bake.hcl
+        id: bake-file
+        uses: beeldengeluid/gha-workflows/.github/actions/docker-bake-file@becf8d9848dbccda04572d39648084da5efaa42d # docker-bake-file
 
       - name: AWS Credentials
         uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
@@ -97,7 +98,7 @@ jobs:
           IMAGE_TAG: ${{ steps.image-tag.outputs.image-tag }}
         with:
           source: .
-          files: docker-bake.hcl
+          files: ${{ steps.bake-file.outputs.path }}
           push: true
 
       - name: Trigger workflows for auto deployment
