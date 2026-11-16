@@ -28,7 +28,7 @@ runs:
         {
           echo 'variable "IMAGE_TAG" {}'
           for dir in "${dirs[@]}"; do
-            folder="${dir#./}"
+            folder="${dir#./}"; folder="${folder,,}"   # image names must be lowercase; context keeps "$dir"
             if [[ "$dir" == . ]]; then repo="${REPOSITORY,,}"; else repo="${REPOSITORY,,}/${folder#"${REPOSITORY,,}"-}"; fi
             target="${repo//[^a-z0-9_-]/-}"
             targets+=("\"$target\"")
