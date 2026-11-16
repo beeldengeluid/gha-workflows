@@ -1,0 +1,38 @@
+name: Docker bake file
+description: >-
+  Use docker-bake.hcl from the repository root, or create a default one with a target per folder
+  that has a Dockerfile. The image goes to <ECR>/<repository name>, or to
+  <ECR>/<repository name>/<folder> when there is more than one Dockerfile. Tags use ${IMAGE_TAG}.
+
+outputs:
+  path:
+    description: Path of the bake file to use
+    value: ${{ steps.bake-file.outputs.path }}
+
+runs:
+  using: composite
+  steps:
+    - name: Find or create docker-bake.hcl
+      id: bake-file
+      shell: bash
+      env:
+        REPOSITORY: ${{ github.event.repository.name }}
+      run: |
+        if [[ -f docker-bake.hcl ]]; then echo "path=docker-bake.hcl" >> "$GITHUB_OUTPUT"; exit 0; fi
+
+        mapfile -t dirs < <(find . -name Dockerfile -not -path '*/target/*' -printf '%h\n' | sort)
+        (( ${#dirs[@]} > 0 )) || { echo "::error::No docker-bake.hcl and no Dockerfile found."; exit 1; }
+
+        targets=()
+        {
+          echo 'variable "IMAGE_TAG" {}'
+          for dir in "${dirs[@]}"; do
+            if [[ "$dir" == . || ${#dirs[@]} == 1 ]]; then repo="${REPOSITORY,,}"; else repo="${REPOSITORY,,}/${dir#./}"; fi
+            target="${repo//[^a-z0-9_-]/-}"
+            targets+=("\"$target\"")
+            printf 'target "%s" {\n  context = "%s"\n  tags    = ["917951871879.dkr.ecr.eu-west-1.amazonaws.com/%s:${IMAGE_TAG}"]\n}\n' "$target" "$dir" "$repo"
+          done
+          echo "group \"default\" { targets = [$(IFS=,; echo "${targets[*]}")] }"
+        } > "$RUNNER_TEMP/docker-bake.hcl"
+        cat "$RUNNER_TEMP/docker-bake.hcl"
+        echo "path=$RUNNER_TEMP/docker-bake.hcl" >> "$GITHUB_OUTPUT"
