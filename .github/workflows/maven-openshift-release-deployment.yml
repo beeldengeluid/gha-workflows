@@ -123,9 +123,6 @@ jobs:
           username: ${{ secrets.GH_USER }}
           password: ${{ secrets.GH_PAT }}
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003 # v4.4.0
-
       # The released code and its build output are in target/checkout
       - name: Get image tag
         id: image-tag
@@ -143,6 +140,7 @@ jobs:
           source: ./target/checkout
           files: ${{ steps.bake-file.outputs.path }}
           push: true
+          provenance: false
 
       - name: Trigger workflows for auto deployment
         env:
