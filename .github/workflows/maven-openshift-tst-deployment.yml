@@ -1,0 +1,119 @@
+name: Maven Project Deployment to openshift-tst
+
+# Same as maven-deploy.yml, but Docker images are built with docker/bake-action from a docker-bake.hcl
+# in the repository root (required). The bake file gets this variable from the workflow:
+#   IMAGE_TAG  Maven project version, plus "-<short sha>" for SNAPSHOT versions,
+#              e.g. 1.4.0-SNAPSHOT-abc1234 or 1.4.0
+
+on:
+  workflow_call:
+    inputs:
+      time-zone:
+        required: false
+        default: "Europe/Amsterdam"
+        type: string
+      timeout-minutes:
+        required: false
+        default: 10
+        type: number
+
+jobs:
+  tst-deployment:
+    name: Maven deploy, Docker build & openshift-tst deploy
+    # One run per repository at a time, so an older run can't deploy after a newer one
+    concurrency: openshift-tst-${{ github.repository }}
+    runs-on: ubuntu-26.04
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    env:
+      TZ: ${{ inputs.time-zone }}
+      MAVEN_ARGS: '--no-transfer-progress --color always'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Check for docker-bake.hcl
+        run: test -f docker-bake.hcl || { echo "::error::No docker-bake.hcl found in the repository root."; exit 1; }
+
+      - name: AWS Credentials
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          aws-region: eu-west-1
+          role-to-assume: arn:aws:iam::917951871879:role/GitHubActionsBgOrg
+
+      - name: Get CodeArtifact Authorization Token
+        run: |
+          codeartifact_auth_token=$(aws codeartifact  get-authorization-token --domain nisv-ateam --domain-owner 917951871879 --region eu-west-1 --query authorizationToken --output text)
+          echo "::add-mask::$codeartifact_auth_token"
+          echo "CODEARTIFACT_AUTH_TOKEN=$codeartifact_auth_token" >> "$GITHUB_ENV"
+
+      - name: Set up JDK
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          distribution: 'temurin'
+          java-version-file: '.java-version'
+          cache: 'maven'
+          cache-dependency-path: 'pom.xml'
+
+      - name: Set Maven settings.xml
+        run: echo "${{ vars.MAVEN_CODE_ARTIFACT_SETTINGS }}" | base64 --decode > ~/.m2/settings.xml
+
+      - name: Maven Deploy
+        run: |
+          mvn clean deploy -B -U -V -fae -ntp -DskipTests|| { echo "Maven Deploy failed."; exit 1; }
+
+      - name: ECR Login
+        uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2.1.7
+
+      - name: Log in to GHCR
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ secrets.GH_USER }}
+          password: ${{ secrets.GH_PAT }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003 # v4.4.0
+
+      - name: Generate a token
+        id: generate-token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf #v2.2.1
+        with:
+          app-id: ${{ vars.BG_APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          repositories: ${{ github.event.repository.name }}, k8s-workloads
+
+      - name: Get image tag
+        id: image-tag
+        # Only snapshot versions get the short commit SHA, e.g. 1.4.0-SNAPSHOT-abc1234
+        run: |
+          IMAGE_TAG=$(MAVEN_ARGS="" mvn -B -q help:evaluate -Dexpression=project.version -DforceStdout)
+          if [[ "$IMAGE_TAG" == *-SNAPSHOT ]]; then IMAGE_TAG="$IMAGE_TAG-${GITHUB_SHA::7}"; fi
+          echo "image-tag=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push Docker images
+        id: bake
+        uses: docker/bake-action@59cb1203cd42bcefd40a1b6d73b589e48c86040e # v7.5.0
+        env:
+          IMAGE_TAG: ${{ steps.image-tag.outputs.image-tag }}
+        with:
+          source: .
+          files: docker-bake.hcl
+          push: true
+
+      - name: Trigger workflows for auto deployment
+        env:
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+          METADATA: ${{ steps.bake.outputs.metadata }}
+          REPOSITORY: ${{ github.event.repository.name }}
+        run: |
+          # One deployment per pushed image (<full image name>:<tag>), matched on newName in kustomization.yml
+          for IMAGE in $(jq -r '.[] | objects | .["image.name"] // empty | split(",")[0]' <<< "$METADATA"); do
+            echo "Update image for deployment script of test environment: $IMAGE"
+            gh workflow run update-maven-projects-image-tag.yml \
+              -r main \
+              -R github.com/beeldengeluid/k8s-workloads \
+              -f project="${REPOSITORY,,}" \
+              -f environments=tst \
+              -f image_name="${IMAGE%:*}" \
+              -f image_tag="${IMAGE##*:}"
+          done
