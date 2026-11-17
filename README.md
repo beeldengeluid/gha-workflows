@@ -50,7 +50,7 @@ jobs:
 | `working-directory` | `.` | test, tst and release: folder of the Maven project, for a repository with the project in a subfolder (see below) |
 | `k8s-workloads` | `true` | both: set `false` to only push the images, without updating k8s-workloads |
 
-The workflows use the organization secrets `GH_USER`, `GH_PAT` and `APP_PRIVATE_KEY`, and the variables `BG_APP_ID` and `MAVEN_CODE_ARTIFACT_SETTINGS`.
+The workflows use the organization secrets `GH_USER`, `GH_PAT` and `APP_PRIVATE_KEY`, and the variables `BG_APP_ID` and `MAVEN_CODEARTIFACT_SETTINGS`/`MAVEN_CODEARTIFACT_SETTINGS_V2`.
 
 ### Image tag
 

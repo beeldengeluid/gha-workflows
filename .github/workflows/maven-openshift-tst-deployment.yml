@@ -65,7 +65,7 @@ jobs:
           cache-dependency-path: '${{ inputs.working-directory }}/pom.xml'
 
       - name: Set Maven settings.xml
-        run: echo "${{ vars.MAVEN_CODE_ARTIFACT_SETTINGS }}" | base64 --decode > ~/.m2/settings.xml
+        run: echo "${{ vars.MAVEN_CODEARTIFACT_SETTINGS_V2 }}" | base64 --decode > ~/.m2/settings.xml
 
       - name: Find or create docker-bake.hcl
         id: bake-file
