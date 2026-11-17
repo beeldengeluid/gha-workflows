@@ -4,6 +4,14 @@ description: >-
   that has a Dockerfile. The image goes to <ECR>/<repository name>/<folder>, where a "<repository name>-"
   prefix is dropped from the folder (musicweb-fallback-api -> musicweb-fallback/api). A Dockerfile in
   the repository root goes to <ECR>/<repository name>. Tags use ${IMAGE_TAG}.
+  With working-directory, the search and the generated file work from that folder, which is also the folder where the
+  bake step runs, so a generated context is relative to it.
+
+inputs:
+  working-directory:
+    description: Folder to look in, relative to the repository root
+    required: false
+    default: "."
 
 outputs:
   path:
@@ -16,6 +24,7 @@ runs:
     - name: Find or create docker-bake.hcl
       id: bake-file
       shell: bash
+      working-directory: ${{ inputs.working-directory }}
       env:
         REPOSITORY: ${{ github.event.repository.name }}
       run: |
