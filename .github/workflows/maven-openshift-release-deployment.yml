@@ -121,11 +121,14 @@ jobs:
       - name: Create and Auto-Merge Pull Request
         if: github.ref_name == github.event.repository.default_branch
         run: |
-          PROJECT_VERSION=$(git describe --tags --abbrev=0 | sed 's/^[^0-9]*//')
-          gh pr create --base ${{ github.event.repository.default_branch }} --head ${{ steps.name-release-branch.outputs.branch }} --title "Release of version $PROJECT_VERSION" --body "This PR merges the Maven release changes."
+          PROJECT_VERSION=$(git describe --tags --abbrev=0 | grep -oE '[0-9]+(\.[0-9]+)+([-.][A-Za-z0-9]+)*$')
+          TITLE="Release of version $PROJECT_VERSION"
+          [[ "$WORKING_DIRECTORY" == "." ]] || TITLE="Release of $WORKING_DIRECTORY version $PROJECT_VERSION"
+          gh pr create --base ${{ github.event.repository.default_branch }} --head ${{ steps.name-release-branch.outputs.branch }} --title "$TITLE" --body "This PR merges the Maven release changes."
           gh pr merge ${{ steps.name-release-branch.outputs.branch }} --merge --admin
         env:
           GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+          WORKING_DIRECTORY: ${{ inputs.working-directory }}
 
       - name: ECR Login
         uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2.1.7
