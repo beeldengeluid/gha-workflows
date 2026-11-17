@@ -1,7 +1,7 @@
 name: Maven Project Release and Deployment to OpenShift
 
 # Same as maven-release.yml, but Docker images are built with docker/bake-action from a docker-bake.hcl
-# in the repository root (required). The bake file gets this variable from the workflow:
+# in the repository root or working-directory, or a generated one. The bake file gets this variable from the workflow:
 #   IMAGE_TAG  Released Maven project version, e.g. 1.4.0
 
 on:
@@ -19,12 +19,16 @@ on:
         required: false
         default: "acc, prd"
         type: string
+      working-directory:
+        description: "Folder of the Maven project, relative to the repository root. Use it when the project is not in the root."
+        required: false
+        default: "."
+        type: string
       k8s-workloads:
         description: "Update the image tag in k8s-workloads after pushing the images"
         required: false
         default: true
         type: boolean
-
 
 jobs:
   release-deployment:
@@ -33,16 +37,15 @@ jobs:
     if: "!contains(github.event.head_commit.message, '[maven-release-plugin]')"
     runs-on: ubuntu-24.04
     timeout-minutes: ${{ inputs.timeout-minutes }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
     env:
       TZ: ${{ inputs.time-zone }}
       MAVEN_ARGS: '--no-transfer-progress --color always'
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Find or create docker-bake.hcl
-        id: bake-file
-        uses: beeldengeluid/gha-workflows/.github/actions/docker-bake-file@daa7f75b3e4fe73d9f8f778f7fc5c22decde8ea3 # docker-bake-file
 
       - name: AWS Credentials
         uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
@@ -60,12 +63,18 @@ jobs:
         uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
         with:
           distribution: 'temurin'
-          java-version-file: '.java-version'
+          java-version-file: '${{ inputs.working-directory }}/.java-version'
           cache: 'maven'
-          cache-dependency-path: 'pom.xml'
+          cache-dependency-path: '${{ inputs.working-directory }}/pom.xml'
 
       - name: Set Maven settings.xml
         run: echo "${{ vars.MAVEN_CODE_ARTIFACT_SETTINGS }}" | base64 --decode > ~/.m2/settings.xml
+
+      - name: Find or create docker-bake.hcl
+        id: bake-file
+        uses: beeldengeluid/gha-workflows/.github/actions/docker-bake-file@21688c092e999acb270764b41468f9bd0cd4d70c # docker-bake-file
+        with:
+          working-directory: ${{ inputs.working-directory }}
 
       - name: Extract repo name
         run: echo "REPO_NAME=${GITHUB_REPOSITORY##*/}" >> $GITHUB_ENV
@@ -131,7 +140,7 @@ jobs:
       # The released code and its build output are in target/checkout
       - name: Get image tag
         id: image-tag
-        working-directory: target/checkout
+        working-directory: ${{ inputs.working-directory == '.' && 'target/checkout' || format('{0}/target/checkout/{0}', inputs.working-directory) }}
         run: |
           IMAGE_TAG=$(MAVEN_ARGS="" mvn -B -q help:evaluate -Dexpression=project.version -DforceStdout)
           echo "image-tag=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
@@ -142,7 +151,7 @@ jobs:
         env:
           IMAGE_TAG: ${{ steps.image-tag.outputs.image-tag }}
         with:
-          source: ./target/checkout
+          source: ./${{ inputs.working-directory == '.' && 'target/checkout' || format('{0}/target/checkout/{0}', inputs.working-directory) }}
           files: ${{ steps.bake-file.outputs.path }}
           push: true
           provenance: false

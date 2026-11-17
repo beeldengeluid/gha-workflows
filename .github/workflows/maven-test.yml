@@ -11,12 +11,20 @@ on:
         required: false
         default: 10
         type: number
+      working-directory:
+        description: "Folder of the Maven project, relative to the repository root. Use it when the project is not in the root."
+        required: false
+        default: "."
+        type: string
 
 
 jobs:
   maven-test:
     runs-on:  ubuntu-24.04
     timeout-minutes: ${{ inputs.timeout-minutes }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
     env:
       TZ: ${{ inputs.time-zone }}
       MAVEN_ARGS: '--no-transfer-progress --color always'
@@ -40,9 +48,9 @@ jobs:
         uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
         with:
           distribution: 'temurin'
-          java-version-file: '.java-version'
+          java-version-file: '${{ inputs.working-directory }}/.java-version'
           cache: 'maven'
-          cache-dependency-path: 'pom.xml'
+          cache-dependency-path: '${{ inputs.working-directory }}/pom.xml'
 
       - name: Set Maven settings.xml
         run: echo "${{ vars.MAVEN_CODE_ARTIFACT_SETTINGS }}" | base64 --decode > ~/.m2/settings.xml

@@ -47,6 +47,7 @@ jobs:
 | `time-zone` | `Europe/Amsterdam` | both |
 | `timeout-minutes` | `10` | both |
 | `environments` | `acc, prd` | release |
+| `working-directory` | `.` | test, tst and release: folder of the Maven project, for a repository with the project in a subfolder (see below) |
 | `k8s-workloads` | `true` | both: set `false` to only push the images, without updating k8s-workloads |
 
 The workflows use the organization secrets `GH_USER`, `GH_PAT` and `APP_PRIVATE_KEY`, and the variables `BG_APP_ID` and `MAVEN_CODE_ARTIFACT_SETTINGS`.
@@ -92,6 +93,28 @@ For every pushed image, the workflow runs [`update-maven-projects-image-tag.yml`
 
 - each image needs its own ECR repository, and
 - each environment's `kustomization.yml` needs an `images` entry with that `newName`.
+
+### Maven project in a subfolder
+
+Set `working-directory` when the `pom.xml` is not in the repository root:
+
+```yaml
+jobs:
+  tst-deployment:
+    uses: beeldengeluid/gha-workflows/.github/workflows/maven-openshift-tst-deployment.yml@<version>
+    with:
+      working-directory: my-project
+      k8s-workloads: false     # do not update image tags in k8s-workloads
+    secrets: inherit
+```
+
+All Maven steps run in that folder, and `.java-version` and `pom.xml` are read from it. The folder can have its own
+`docker-bake.hcl` or, like a project in the root, gets a generated one by the `docker-bake-file` action. Bake runs from the
+folder, so the `context` and `dockerfile` paths in the file are relative to it. For a release, the bake file is read from
+the released code in `<working-directory>/target/checkout/<working-directory>`.
+
+For a release, `release:prepare` needs an `<scm>` section in the project's pom. In a repository with more than one released
+project, give each a distinct `tagNameFormat` in the release plugin configuration, for example `my-project-@{project.version}`.
 
 ### Changing the docker-bake-file action
 
