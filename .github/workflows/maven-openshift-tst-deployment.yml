@@ -90,9 +90,9 @@ jobs:
       - name: Generate a token
         if: inputs.k8s-workloads
         id: generate-token
-        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf #v2.2.1
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
-          app-id: ${{ vars.BG_APP_ID }}
+          client-id: ${{ vars.BG_APP_CLIENT_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
           repositories: ${{ github.event.repository.name }}, k8s-workloads
 
