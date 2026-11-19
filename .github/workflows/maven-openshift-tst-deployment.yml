@@ -1,7 +1,7 @@
 name: Maven Project Deployment to openshift-tst
 
 # Same as maven-deploy.yml, but Docker images are built with docker/bake-action from a docker-bake.hcl
-# in the repository root or working-directory, or a generated one. The bake file gets this variable from the workflow:
+# in the repository root or maven-project-dir, or a generated one. The bake file gets this variable from the workflow:
 #   IMAGE_TAG  Maven project version, plus "-<short sha>" for SNAPSHOT versions,
 #              e.g. 1.4.0-SNAPSHOT-abc1234 or 1.4.0
 
@@ -16,7 +16,7 @@ on:
         required: false
         default: 10
         type: number
-      working-directory:
+      maven-project-dir:
         description: "Folder of the Maven project, relative to the repository root. Use it when the project is not in the root."
         required: false
         default: "."
@@ -26,17 +26,22 @@ on:
         required: false
         default: true
         type: boolean
+      k8s-workloads-project:
+        description: "Folder in k8s-workloads with the kustomization files of this project. Default: the repository name."
+        required: false
+        default: ""
+        type: string
 
 jobs:
   tst-deployment:
     name: Maven deploy, Docker build & openshift-tst deploy
     # One run per repository at a time, so an older run can't deploy after a newer one
-    concurrency: openshift-tst-${{ github.repository }}
+    concurrency: openshift-tst-${{ github.repository }}-${{ inputs.maven-project-dir }}
     runs-on: ubuntu-26.04
     timeout-minutes: ${{ inputs.timeout-minutes }}
     defaults:
       run:
-        working-directory: ${{ inputs.working-directory }}
+        working-directory: ${{ inputs.maven-project-dir }}
     env:
       TZ: ${{ inputs.time-zone }}
       MAVEN_ARGS: '--no-transfer-progress --color always'
@@ -60,9 +65,9 @@ jobs:
         uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
         with:
           distribution: 'temurin'
-          java-version-file: '${{ inputs.working-directory }}/.java-version'
+          java-version-file: '${{ inputs.maven-project-dir }}/.java-version'
           cache: 'maven'
-          cache-dependency-path: '${{ inputs.working-directory }}/pom.xml'
+          cache-dependency-path: '${{ inputs.maven-project-dir }}/pom.xml'
 
       - name: Set Maven settings.xml
         run: echo "${{ vars.MAVEN_CODEARTIFACT_SETTINGS_V2 }}" | base64 --decode > ~/.m2/settings.xml
@@ -71,7 +76,7 @@ jobs:
         id: bake-file
         uses: beeldengeluid/gha-workflows/.github/actions/docker-bake-file@21688c092e999acb270764b41468f9bd0cd4d70c # docker-bake-file
         with:
-          working-directory: ${{ inputs.working-directory }}
+          working-directory: ${{ inputs.maven-project-dir }}
 
       - name: Maven Deploy
         run: |
@@ -110,7 +115,7 @@ jobs:
         env:
           IMAGE_TAG: ${{ steps.image-tag.outputs.image-tag }}
         with:
-          source: ${{ inputs.working-directory }}
+          source: ${{ inputs.maven-project-dir }}
           files: ${{ steps.bake-file.outputs.path }}
           push: true
           provenance: false
@@ -121,6 +126,7 @@ jobs:
           GH_TOKEN: ${{ steps.generate-token.outputs.token }}
           METADATA: ${{ steps.bake.outputs.metadata }}
           REPOSITORY: ${{ github.event.repository.name }}
+          K8S_PROJECT: ${{ inputs.k8s-workloads-project }}
         run: |
           # One deployment per pushed image (<full image name>:<tag>), matched on newName in kustomization.yml
           for IMAGE in $(jq -r '.[] | objects | .["image.name"] // empty | split(",")[0]' <<< "$METADATA"); do
@@ -128,7 +134,7 @@ jobs:
             gh workflow run update-maven-projects-image-tag.yml \
               -r main \
               -R github.com/beeldengeluid/k8s-workloads \
-              -f project="${REPOSITORY,,}" \
+              -f project="${K8S_PROJECT:-${REPOSITORY,,}}" \
               -f environments=tst \
               -f image_name="${IMAGE%:*}" \
               -f image_tag="${IMAGE##*:}"
