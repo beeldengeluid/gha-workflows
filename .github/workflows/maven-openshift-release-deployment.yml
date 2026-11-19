@@ -1,0 +1,215 @@
+name: Maven Project Release and Deployment to OpenShift
+
+# Same as maven-release.yml, but Docker images are built with docker/bake-action from a docker-bake.hcl
+# in the repository root or maven-project-dir, or a generated one. The bake file gets this variable from the workflow:
+#   IMAGE_TAG  Released Maven project version, e.g. 1.4.0
+
+on:
+  workflow_call:
+    inputs:
+      time-zone:
+        required: false
+        default: "Europe/Amsterdam"
+        type: string
+      timeout-minutes:
+        required: false
+        default: 10
+        type: number
+      environments:
+        required: false
+        default: "acc, prd"
+        type: string
+      maven-project-dir:
+        description: "Folder of the Maven project, relative to the repository root. Use it when the project is not in the root."
+        required: false
+        default: "."
+        type: string
+      k8s-workloads:
+        description: "Update the image tag in k8s-workloads after pushing the images"
+        required: false
+        default: true
+        type: boolean
+      release-version:
+        description: "Version to release, for a major bump (e.g. 2.0.0). Empty: drop -SNAPSHOT."
+        required: false
+        default: ""
+        type: string
+      k8s-workloads-project:
+        description: "Folder in k8s-workloads with the kustomization files of this project. Default: the repository name."
+        required: false
+        default: ""
+        type: string
+
+jobs:
+  release-deployment:
+    name: Maven release, Docker build & OpenShift deploy (${{ inputs.environments }})
+    # Only run if the commit message does not contain '[maven-release-plugin]',  commit is made by mvn.
+    if: "!contains(github.event.head_commit.message, '[maven-release-plugin]')"
+    runs-on: ubuntu-24.04
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.maven-project-dir }}
+    env:
+      TZ: ${{ inputs.time-zone }}
+      MAVEN_ARGS: '--no-transfer-progress --color always'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # A project without a Dockerfile or bake file (such as a library) gets no Docker image and no k8s-workloads update
+      - name: Check for Dockerfile
+        id: dockerfile
+        run: |
+          if [[ -f docker-bake.hcl || -n "$(find . -name Dockerfile -not -path '*/target/*' -print -quit)" ]]; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No docker-bake.hcl and no Dockerfile found: skipping the Docker image."
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: AWS Credentials
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          aws-region: eu-west-1
+          role-to-assume: arn:aws:iam::917951871879:role/GitHubActionsBgOrg
+
+      - name: Get CodeArtifact Authorization Token
+        run: |
+          codeartifact_auth_token=$(aws codeartifact  get-authorization-token --domain nisv-ateam --domain-owner 917951871879 --region eu-west-1 --query authorizationToken --output text)
+          echo "::add-mask::$codeartifact_auth_token"
+          echo "CODEARTIFACT_AUTH_TOKEN=$codeartifact_auth_token" >> "$GITHUB_ENV"
+
+      - name: Set up JDK
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          distribution: 'temurin'
+          java-version-file: '${{ inputs.maven-project-dir }}/.java-version'
+          cache: 'maven'
+          cache-dependency-path: '${{ inputs.maven-project-dir }}/pom.xml'
+
+      - name: Set Maven settings.xml
+        run: echo "${{ vars.MAVEN_CODEARTIFACT_SETTINGS_V2 }}" | base64 --decode > ~/.m2/settings.xml
+
+      - name: Find or create docker-bake.hcl
+        if: steps.dockerfile.outputs.found == 'true'
+        id: bake-file
+        uses: beeldengeluid/gha-workflows/.github/actions/docker-bake-file@a989d7d5c9312f8c874c375ecf10a3ffa50aecfb # docker-bake-file
+        with:
+          working-directory: ${{ inputs.maven-project-dir }}
+
+      - name: Extract repo name
+        run: echo "REPO_NAME=${GITHUB_REPOSITORY##*/}" >> $GITHUB_ENV
+
+      - name: Generate a token
+        id: generate-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.BG_APP_CLIENT_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          repositories: ${{ env.REPO_NAME }}, k8s-workloads
+
+      - name: Set up Git credentials
+        run: |
+          git config --global user.name ${{ github.actor }}
+          git config --global user.email "github-actions@beeldengeluid.nl"
+          git config --global url."https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}".insteadOf "git@github.com:${{ github.repository }}.git"
+          git config --global url."https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
+          git fetch --tags --prune
+
+      - name: Name Release Branch
+        id: name-release-branch
+        if: github.ref_name == github.event.repository.default_branch
+        env:
+          MAVEN_PROJECT_DIR: ${{ inputs.maven-project-dir }}
+        run: |
+          BRANCH_NAME=RELEASE-$(echo ${{ github.sha }} | cut -c1-7)
+          # Projects in a sub folder get their own branch, so projects released in the same run don't share one
+          [[ "$MAVEN_PROJECT_DIR" == . ]] || BRANCH_NAME="$BRANCH_NAME-${MAVEN_PROJECT_DIR//\//-}"
+          echo "branch=$BRANCH_NAME" >> $GITHUB_OUTPUT
+
+      - name: Create and Push Release Branch
+        if: github.ref_name == github.event.repository.default_branch
+        run: |
+          git checkout -b ${{ steps.name-release-branch.outputs.branch }} || git checkout ${{ steps.name-release-branch.outputs.branch }}
+          git push origin ${{ steps.name-release-branch.outputs.branch }} -f
+
+      - name: Maven Release Prepare
+        env:
+          RELEASE_VERSION: ${{ inputs.release-version }}
+        run: |
+          ARGS=()
+          [ -n "$RELEASE_VERSION" ] && ARGS+=("-DreleaseVersion=$RELEASE_VERSION")
+          mvn -B -U release:prepare -fae "${ARGS[@]}" || { echo "Maven Release Prepare failed."; exit 1; }
+
+      - name: Maven Release Perform
+        id: release-output
+        run: |
+          trap 'echo "Error occurred. Rolling back..."; mvn -B release:rollback' ERR
+          mvn -B -U release:perform -fae
+
+      - name: Create and Auto-Merge Pull Request
+        if: github.ref_name == github.event.repository.default_branch
+        run: |
+          PROJECT_VERSION=$(git describe --tags --abbrev=0 | grep -oE '[0-9]+(\.[0-9]+)+([-.][A-Za-z0-9]+)*$')
+          TITLE="Release of version $PROJECT_VERSION"
+          [[ "$WORKING_DIRECTORY" == "." ]] || TITLE="Release of $WORKING_DIRECTORY version $PROJECT_VERSION"
+          gh pr create --base ${{ github.event.repository.default_branch }} --head ${{ steps.name-release-branch.outputs.branch }} --title "$TITLE" --body "This PR merges the Maven release changes."
+          gh pr merge ${{ steps.name-release-branch.outputs.branch }} --merge --admin
+        env:
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+          WORKING_DIRECTORY: ${{ inputs.maven-project-dir }}
+
+      - name: ECR Login
+        if: steps.dockerfile.outputs.found == 'true'
+        uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2.1.7
+
+      - name: Log in to GHCR
+        if: steps.dockerfile.outputs.found == 'true'
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ secrets.GH_USER }}
+          password: ${{ secrets.GH_PAT }}
+
+      # The released code and its build output are in target/checkout
+      - name: Get image tag
+        if: steps.dockerfile.outputs.found == 'true'
+        id: image-tag
+        working-directory: ${{ inputs.maven-project-dir == '.' && 'target/checkout' || format('{0}/target/checkout/{0}', inputs.maven-project-dir) }}
+        run: |
+          IMAGE_TAG=$(MAVEN_ARGS="" mvn -B -q help:evaluate -Dexpression=project.version -DforceStdout)
+          echo "image-tag=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push Docker images
+        if: steps.dockerfile.outputs.found == 'true'
+        id: bake
+        uses: docker/bake-action@59cb1203cd42bcefd40a1b6d73b589e48c86040e # v7.5.0
+        env:
+          IMAGE_TAG: ${{ steps.image-tag.outputs.image-tag }}
+        with:
+          source: ./${{ inputs.maven-project-dir == '.' && 'target/checkout' || format('{0}/target/checkout/{0}', inputs.maven-project-dir) }}
+          files: ${{ steps.bake-file.outputs.path }}
+          push: true
+          provenance: false
+
+      - name: Trigger workflows for auto deployment
+        if: inputs.k8s-workloads && steps.dockerfile.outputs.found == 'true'
+        env:
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+          ENVIRONMENTS: ${{ inputs.environments }}
+          METADATA: ${{ steps.bake.outputs.metadata }}
+          REPOSITORY: ${{ github.event.repository.name }}
+          K8S_PROJECT: ${{ inputs.k8s-workloads-project }}
+        run: |
+          # One deployment per pushed image (<full image name>:<tag>), matched on newName in kustomization.yml
+          for IMAGE in $(jq -r '.[] | objects | .["image.name"] // empty | split(",")[0]' <<< "$METADATA"); do
+            echo "Update image for deployment scripts of $ENVIRONMENTS environments: $IMAGE"
+            gh workflow run update-maven-projects-image-tag.yml \
+              -r main \
+              -R github.com/beeldengeluid/k8s-workloads \
+              -f project="${K8S_PROJECT:-${REPOSITORY,,}}" \
+              -f environments="$ENVIRONMENTS" \
+              -f image_name="${IMAGE%:*}" \
+              -f image_tag="${IMAGE##*:}"
+          done
