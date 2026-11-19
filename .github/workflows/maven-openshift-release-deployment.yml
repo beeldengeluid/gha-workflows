@@ -29,6 +29,11 @@ on:
         required: false
         default: true
         type: boolean
+      release-version:
+        description: "Version to release, for a major bump (e.g. 2.0.0). Empty: drop -SNAPSHOT."
+        required: false
+        default: ""
+        type: string
       k8s-workloads-project:
         description: "Folder in k8s-workloads with the kustomization files of this project. Default: the repository name."
         required: false
@@ -51,6 +56,17 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # A project without a Dockerfile or bake file (such as a library) gets no Docker image and no k8s-workloads update
+      - name: Check for Dockerfile
+        id: dockerfile
+        run: |
+          if [[ -f docker-bake.hcl || -n "$(find . -name Dockerfile -not -path '*/target/*' -print -quit)" ]]; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No docker-bake.hcl and no Dockerfile found: skipping the Docker image."
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: AWS Credentials
         uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
@@ -76,6 +92,7 @@ jobs:
         run: echo "${{ vars.MAVEN_CODEARTIFACT_SETTINGS_V2 }}" | base64 --decode > ~/.m2/settings.xml
 
       - name: Find or create docker-bake.hcl
+        if: steps.dockerfile.outputs.found == 'true'
         id: bake-file
         uses: beeldengeluid/gha-workflows/.github/actions/docker-bake-file@21688c092e999acb270764b41468f9bd0cd4d70c # docker-bake-file
         with:
@@ -118,8 +135,12 @@ jobs:
           git push origin ${{ steps.name-release-branch.outputs.branch }} -f
 
       - name: Maven Release Prepare
+        env:
+          RELEASE_VERSION: ${{ inputs.release-version }}
         run: |
-          mvn -B -U release:prepare -fae || { echo "Maven Release Prepare failed."; exit 1; }
+          ARGS=()
+          [ -n "$RELEASE_VERSION" ] && ARGS+=("-DreleaseVersion=$RELEASE_VERSION")
+          mvn -B -U release:prepare -fae "${ARGS[@]}" || { echo "Maven Release Prepare failed."; exit 1; }
 
       - name: Maven Release Perform
         id: release-output
@@ -140,9 +161,11 @@ jobs:
           WORKING_DIRECTORY: ${{ inputs.maven-project-dir }}
 
       - name: ECR Login
+        if: steps.dockerfile.outputs.found == 'true'
         uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2.1.7
 
       - name: Log in to GHCR
+        if: steps.dockerfile.outputs.found == 'true'
         uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
           registry: ghcr.io
@@ -151,6 +174,7 @@ jobs:
 
       # The released code and its build output are in target/checkout
       - name: Get image tag
+        if: steps.dockerfile.outputs.found == 'true'
         id: image-tag
         working-directory: ${{ inputs.maven-project-dir == '.' && 'target/checkout' || format('{0}/target/checkout/{0}', inputs.maven-project-dir) }}
         run: |
@@ -158,6 +182,7 @@ jobs:
           echo "image-tag=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
 
       - name: Build and push Docker images
+        if: steps.dockerfile.outputs.found == 'true'
         id: bake
         uses: docker/bake-action@59cb1203cd42bcefd40a1b6d73b589e48c86040e # v7.5.0
         env:
@@ -169,7 +194,7 @@ jobs:
           provenance: false
 
       - name: Trigger workflows for auto deployment
-        if: inputs.k8s-workloads
+        if: inputs.k8s-workloads && steps.dockerfile.outputs.found == 'true'
         env:
           GH_TOKEN: ${{ steps.generate-token.outputs.token }}
           ENVIRONMENTS: ${{ inputs.environments }}

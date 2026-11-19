@@ -49,6 +49,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      # A project without a Dockerfile or bake file (such as a library) gets no Docker image and no k8s-workloads update
+      - name: Check for Dockerfile
+        id: dockerfile
+        run: |
+          if [[ -f docker-bake.hcl || -n "$(find . -name Dockerfile -not -path '*/target/*' -print -quit)" ]]; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No docker-bake.hcl and no Dockerfile found: skipping the Docker image."
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: AWS Credentials
         uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
@@ -73,6 +84,7 @@ jobs:
         run: echo "${{ vars.MAVEN_CODEARTIFACT_SETTINGS_V2 }}" | base64 --decode > ~/.m2/settings.xml
 
       - name: Find or create docker-bake.hcl
+        if: steps.dockerfile.outputs.found == 'true'
         id: bake-file
         uses: beeldengeluid/gha-workflows/.github/actions/docker-bake-file@21688c092e999acb270764b41468f9bd0cd4d70c # docker-bake-file
         with:
@@ -83,9 +95,11 @@ jobs:
           mvn clean deploy -B -U -V -fae -ntp -DskipTests|| { echo "Maven Deploy failed."; exit 1; }
 
       - name: ECR Login
+        if: steps.dockerfile.outputs.found == 'true'
         uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2.1.7
 
       - name: Log in to GHCR
+        if: steps.dockerfile.outputs.found == 'true'
         uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
           registry: ghcr.io
@@ -93,7 +107,7 @@ jobs:
           password: ${{ secrets.GH_PAT }}
 
       - name: Generate a token
-        if: inputs.k8s-workloads
+        if: inputs.k8s-workloads && steps.dockerfile.outputs.found == 'true'
         id: generate-token
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
@@ -102,6 +116,7 @@ jobs:
           repositories: ${{ github.event.repository.name }}, k8s-workloads
 
       - name: Get image tag
+        if: steps.dockerfile.outputs.found == 'true'
         id: image-tag
         # Only snapshot versions get the short commit SHA, e.g. 1.4.0-SNAPSHOT-abc1234
         run: |
@@ -110,6 +125,7 @@ jobs:
           echo "image-tag=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
 
       - name: Build and push Docker images
+        if: steps.dockerfile.outputs.found == 'true'
         id: bake
         uses: docker/bake-action@59cb1203cd42bcefd40a1b6d73b589e48c86040e # v7.5.0
         env:
@@ -121,7 +137,7 @@ jobs:
           provenance: false
 
       - name: Trigger workflows for auto deployment
-        if: inputs.k8s-workloads
+        if: inputs.k8s-workloads && steps.dockerfile.outputs.found == 'true'
         env:
           GH_TOKEN: ${{ steps.generate-token.outputs.token }}
           METADATA: ${{ steps.bake.outputs.metadata }}
