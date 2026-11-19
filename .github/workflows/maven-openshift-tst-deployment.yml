@@ -86,7 +86,7 @@ jobs:
       - name: Find or create docker-bake.hcl
         if: steps.dockerfile.outputs.found == 'true'
         id: bake-file
-        uses: beeldengeluid/gha-workflows/.github/actions/docker-bake-file@21688c092e999acb270764b41468f9bd0cd4d70c # docker-bake-file
+        uses: beeldengeluid/gha-workflows/.github/actions/docker-bake-file@a989d7d5c9312f8c874c375ecf10a3ffa50aecfb # docker-bake-file
         with:
           working-directory: ${{ inputs.maven-project-dir }}
 
