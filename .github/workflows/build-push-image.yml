@@ -97,7 +97,7 @@ jobs:
 
       - name: ECR Login
         if: ${{ needs.metadata.outputs.registry == '917951871879.dkr.ecr.eu-west-1.amazonaws.com'}}
-        uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd #v2.1.7
+        uses: aws-actions/amazon-ecr-login@7290e214a610b32bc0eef81748948b6d466a8783 #v2.2.0
 
       - name: Docker Login
         if: ${{ needs.metadata.outputs.registry == 'ghcr.io' }}
@@ -167,7 +167,7 @@ jobs:
 
       - name: ECR Login
         if: ${{ needs.metadata.outputs.registry == '917951871879.dkr.ecr.eu-west-1.amazonaws.com'}}
-        uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd #v2.1.7
+        uses: aws-actions/amazon-ecr-login@7290e214a610b32bc0eef81748948b6d466a8783 #v2.2.0
 
       - name: Docker Login
         if: ${{ needs.metadata.outputs.registry == 'ghcr.io' }}
